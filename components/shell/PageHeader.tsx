@@ -132,7 +132,18 @@ function Avatar() {
 }
 
 /** Page title row with global search, notifications, and account menu. */
-export function PageHeader({ title, subtitle, children }: { title: string; subtitle?: React.ReactNode; children?: React.ReactNode }) {
+export function PageHeader({
+  title,
+  subtitle,
+  children,
+  hideSearch,
+}: {
+  title: string;
+  subtitle?: React.ReactNode;
+  children?: React.ReactNode;
+  /** For pages with their own search box (Transactions). */
+  hideSearch?: boolean;
+}) {
   return (
     <header className="px-4 pt-[max(16px,env(safe-area-inset-top))] sm:px-6 lg:px-8 lg:pt-7">
       <div className="flex items-center gap-3">
@@ -141,11 +152,11 @@ export function PageHeader({ title, subtitle, children }: { title: string; subti
           <h1 className="truncate text-[26px] leading-tight font-medium tracking-tight sm:text-[34px]">{title}</h1>
           {subtitle ? <p className="mt-0.5 text-sm text-muted">{subtitle}</p> : null}
         </div>
-        <SearchBox className="hidden w-80 md:flex" />
+        {hideSearch ? null : <SearchBox className="hidden w-80 md:flex" />}
         <Notifications />
         <Avatar />
       </div>
-      <SearchBox className="mt-4 md:hidden" />
+      {hideSearch ? null : <SearchBox className="mt-4 md:hidden" />}
       {children}
     </header>
   );

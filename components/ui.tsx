@@ -76,7 +76,7 @@ export function Segmented<T extends string>({
 }) {
   const items = options.map((o) => (typeof o === "string" ? { value: o, label: o } : o));
   return (
-    <div className={cx("inline-flex rounded-full p-1", dark ? "bg-white/8" : "bg-surface")} role="tablist">
+    <div className={cx("inline-flex shrink-0 rounded-full p-1", dark ? "bg-white/8" : "bg-surface")} role="tablist">
       {items.map((o) => (
         <button
           key={o.value}
@@ -84,7 +84,7 @@ export function Segmented<T extends string>({
           aria-selected={o.value === value}
           onClick={() => onChange(o.value)}
           className={cx(
-            "rounded-full font-medium transition-colors",
+            "rounded-full font-medium whitespace-nowrap transition-colors",
             size === "sm" ? "px-2.5 py-1 text-xs" : "px-3 py-1.5 text-sm sm:px-3.5",
             o.value === value
               ? dark
