@@ -9,7 +9,26 @@ bills, income, and savings in one place, in the spirit of Rocket Money.
 
 ## Status
 
-The backend is complete and verified against Plaid sandbox. The UI is not built yet.
+Backend and UI are built and verified against Plaid sandbox, on desktop and phone widths.
+
+| Page | What's on it |
+| --- | --- |
+| Dashboard | Today / this week / this month, current balance, balance or net-worth history, spending heatmap, upcoming bills, recent transactions, income vs spending, categories, fixed costs, spending map |
+| Transactions | Search and filters, grouped by day, notes |
+| Spending | Month view: vs last month, categories, top merchants, heatmap, map |
+| Subscriptions | Monthly/yearly cost, possibly-cancelled, fix misclassifications |
+| Bills | Upcoming charges, calendar of bills and paydays |
+| Accounts | Net worth, banks and accounts, connect / repair / remove via Plaid Link |
+
+## Going live with your real banks
+
+1. Remove the sandbox test bank (Accounts -> First Platypus Bank -> Remove)
+2. In `.env.local`, set `PLAID_ENV=production` and `PLAID_SECRET` to your **production** secret
+3. Restart the dev server, open Accounts, and click **Connect a bank**
+
+Banks like Bank of America and Capital One sign you in on their own site (OAuth) inside the
+Plaid popup. If Plaid says a bank is unavailable, check your Plaid dashboard for any remaining
+production or OAuth registration steps.
 
 ## Setup
 
