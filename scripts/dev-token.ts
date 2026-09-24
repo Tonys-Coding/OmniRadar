@@ -36,8 +36,15 @@ async function main() {
   if (error || !data.session) throw error ?? new Error("No session returned");
 
   writeFileSync(".dev-token", data.session.access_token, { mode: 0o600 });
+  // One-time browser login: open http://localhost:3100/api/dev/session (dev server only).
+  writeFileSync(
+    ".dev-session",
+    JSON.stringify({ access_token: data.session.access_token, refresh_token: data.session.refresh_token }),
+    { mode: 0o600 },
+  );
   const expires = new Date((data.session.expires_at ?? 0) * 1000).toLocaleTimeString();
-  console.log(`Wrote .dev-token for ${email} (expires ${expires}).`);
+  console.log(`Wrote .dev-token and .dev-session for ${email} (token expires ${expires}).`);
+  console.log("Browser: open http://localhost:3100/api/dev/session once to sign in.");
 }
 
 main().catch((error) => {

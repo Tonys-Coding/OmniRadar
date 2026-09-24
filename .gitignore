@@ -28,3 +28,4 @@ supabase/.branches/
 
 # dev-only access token (npm run dev-token)
 .dev-token
+.dev-session

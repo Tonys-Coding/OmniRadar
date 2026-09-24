@@ -1,35 +1,33 @@
 import { z } from "zod";
 import { withAuth } from "@/lib/auth";
-import { addDays, today } from "@/lib/dates";
-import { netWorth, netWorthSeries } from "@/lib/finance/aggregate";
-import { loadAll, loadVisibleAccounts } from "@/lib/finance/queries";
+import { addDays, addMonths, today } from "@/lib/dates";
+import { netWorth } from "@/lib/finance/aggregate";
+import { reconstructBalances } from "@/lib/finance/balance-history";
+import { loadHistoryTxns, loadVisibleAccounts } from "@/lib/finance/queries";
 import { json, readQuery } from "@/lib/http";
 
-const Query = z.object({ days: z.coerce.number().int().min(1).max(3650).default(90) });
+const RANGES = { "1W": 7, "1M": 30, "3M": 90, "6M": 182, "1Y": 365, ALL: 730 } as const;
+const Query = z.object({ range: z.enum(Object.keys(RANGES) as [keyof typeof RANGES]).default("3M") });
 
 /**
- * Net worth today and as a daily series. History starts the day the first
- * bank was linked (from daily balance snapshots taken at each sync).
+ * Current net worth plus daily cash and net-worth history, rebuilt from
+ * today's balances and transaction history (up to 2 years).
  */
 export const GET = withAuth(async (request, auth) => {
-  const { days } = readQuery(request, Query);
+  const { range } = readQuery(request, Query);
   const to = today();
-  const from = addDays(to, -(days - 1));
+  const from = range === "ALL" ? addMonths(to, -24) : addDays(to, -(RANGES[range] - 1));
 
   const accounts = await loadVisibleAccounts(auth.supabase);
-  const ids = accounts.map((a) => a.id);
-  const snapshots =
-    ids.length === 0
-      ? []
-      : await loadAll((start, end) =>
-          auth.supabase
-            .from("balance_snapshots")
-            .select("account_id, snapshot_date, current_balance")
-            .in("account_id", ids)
-            .order("snapshot_date")
-            .order("id")
-            .range(start, end),
-        );
+  const txns = await loadHistoryTxns(
+    auth.supabase,
+    from,
+    accounts.map((a) => a.id),
+  );
 
-  return json({ current: netWorth(accounts), series: netWorthSeries(accounts, snapshots, from, to) });
+  // Don't draw a flat line before the first transaction we know about.
+  const firstTxn = txns.reduce<string | null>((min, t) => (min === null || t.date < min ? t.date : min), null);
+  const start = firstTxn && firstTxn > from ? firstTxn : from;
+
+  return json({ range, current: netWorth(accounts), series: reconstructBalances(accounts, txns, start, to) });
 });

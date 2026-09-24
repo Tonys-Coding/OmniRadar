@@ -1,7 +1,7 @@
 import "server-only";
 import type { UserClient } from "@/lib/supabase/server";
 import type { RecurringStreamRow } from "@/lib/supabase/database.types";
-import type { CashflowTxn } from "./aggregate";
+import type { AnalyticsTxn, PlaidLocation } from "./analytics";
 import { effectiveKind, monthlyEquivalent } from "./categories";
 
 // Read helpers for API routes. They run as the signed-in user (RLS applies).
@@ -32,24 +32,49 @@ export async function loadVisibleAccounts(supabase: UserClient) {
   return data;
 }
 
-export async function loadCashflowTxns(
+/**
+ * Transactions since a date on the given (visible) accounts, with the fields
+ * analytics need: category, merchant, logo, and Plaid's location.
+ */
+export async function loadAnalyticsTxns(
   supabase: UserClient,
   since: string,
   accounts: { id: string; type: string }[],
-): Promise<CashflowTxn[]> {
+): Promise<AnalyticsTxn[]> {
   if (accounts.length === 0) return [];
   const types = new Map(accounts.map((a) => [a.id, a.type]));
   const rows = await loadAll((from, to) =>
     supabase
       .from("transactions")
-      .select("account_id, plaid_transaction_id, name, amount, date, category_primary, category_detailed")
+      .select(
+        "account_id, plaid_transaction_id, name, merchant_name, logo_url, payment_channel, amount, date, category_primary, category_detailed, location:raw->location",
+      )
       .in("account_id", [...types.keys()])
       .gte("date", since)
       .order("date")
       .order("id")
       .range(from, to),
   );
-  return rows.map(({ account_id, ...t }) => ({ ...t, account_type: types.get(account_id) ?? "other" }));
+  return rows.map(({ account_id, location, ...t }) => ({
+    ...t,
+    account_type: types.get(account_id) ?? "other",
+    location: (location ?? null) as PlaidLocation,
+  }));
+}
+
+/** Posted and pending amounts per account since a date (for balance history). */
+export async function loadHistoryTxns(supabase: UserClient, since: string, accountIds: string[]) {
+  if (accountIds.length === 0) return [];
+  return loadAll((from, to) =>
+    supabase
+      .from("transactions")
+      .select("account_id, amount, date, pending")
+      .in("account_id", accountIds)
+      .gte("date", since)
+      .order("date")
+      .order("id")
+      .range(from, to),
+  );
 }
 
 /** Plaid transaction ids that belong to recurring income streams (paychecks). */
@@ -68,6 +93,8 @@ export type StreamView = Omit<RecurringStreamRow, "user_id" | "transaction_ids" 
   monthly_amount: number;
   transaction_count: number;
   account: { name: string; mask: string | null } | null;
+  logo_url: string | null;
+  website: string | null;
 };
 
 /** Recurring streams with effective kind and monthly-equivalent amount. */
@@ -86,11 +113,28 @@ export async function loadStreams(
   const { data, error } = await query;
   if (error) throw error;
 
-  return data.map(({ transaction_ids, accounts, ...s }) => ({
-    ...s,
-    effective_kind: effectiveKind(s),
-    monthly_amount: monthlyEquivalent(s.average_amount, s.frequency),
-    transaction_count: transaction_ids.length,
-    account: accounts ?? null,
-  }));
+  // Streams have no logo of their own: borrow the one on their latest charge.
+  const latestIds = data.map((s) => s.transaction_ids[s.transaction_ids.length - 1]).filter((id): id is string => !!id);
+  const logos = new Map<string, { logo_url: string | null; website: string | null }>();
+  for (let i = 0; i < latestIds.length; i += 100) {
+    const { data: rows, error: logoError } = await supabase
+      .from("transactions")
+      .select("plaid_transaction_id, logo_url, website")
+      .in("plaid_transaction_id", latestIds.slice(i, i + 100));
+    if (logoError) throw logoError;
+    for (const r of rows) logos.set(r.plaid_transaction_id, { logo_url: r.logo_url, website: r.website });
+  }
+
+  return data.map(({ transaction_ids, accounts, ...s }) => {
+    const logo = logos.get(transaction_ids[transaction_ids.length - 1] ?? "");
+    return {
+      ...s,
+      effective_kind: effectiveKind(s),
+      monthly_amount: monthlyEquivalent(s.average_amount, s.frequency),
+      transaction_count: transaction_ids.length,
+      account: accounts ?? null,
+      logo_url: logo?.logo_url ?? null,
+      website: logo?.website ?? null,
+    };
+  });
 }

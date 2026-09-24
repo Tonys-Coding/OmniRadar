@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { cashflowByMonth, netWorth, netWorthSeries, spendingByCategory, type CashflowTxn } from "@/lib/finance/aggregate";
+import { cashflowByMonth, netWorth, spendingByCategory, type CashflowTxn } from "@/lib/finance/aggregate";
 
 let seq = 0;
 const t = (
@@ -85,44 +85,5 @@ describe("netWorth", () => {
     ]);
     expect(nw).toMatchObject({ assets: 12500, liabilities: 5740.25, net_worth: 6759.75 });
     expect(nw.by_type.depository).toBe(12500);
-  });
-});
-
-describe("netWorthSeries", () => {
-  const accounts = [
-    { id: "chk", type: "depository", current_balance: 0 },
-    { id: "cc", type: "credit", current_balance: 0 },
-  ];
-
-  it("carries balances forward across days without snapshots", () => {
-    const points = netWorthSeries(
-      accounts,
-      [
-        { account_id: "chk", snapshot_date: "2026-08-28", current_balance: 1000 },
-        { account_id: "cc", snapshot_date: "2026-09-01", current_balance: 200 },
-        { account_id: "chk", snapshot_date: "2026-09-02", current_balance: 1500 },
-      ],
-      "2026-08-31",
-      "2026-09-03",
-    );
-    expect(points.map((p) => [p.date, p.net_worth])).toEqual([
-      ["2026-08-31", 1000],
-      ["2026-09-01", 800],
-      ["2026-09-02", 1300],
-      ["2026-09-03", 1300],
-    ]);
-  });
-
-  it("omits days before any data and ignores unknown (hidden) accounts", () => {
-    const points = netWorthSeries(
-      accounts,
-      [
-        { account_id: "chk", snapshot_date: "2026-09-02", current_balance: 50 },
-        { account_id: "hidden", snapshot_date: "2026-09-01", current_balance: 9999 },
-      ],
-      "2026-09-01",
-      "2026-09-02",
-    );
-    expect(points).toEqual([{ date: "2026-09-02", net_worth: 50, assets: 50, liabilities: 0 }]);
   });
 });

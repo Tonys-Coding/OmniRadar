@@ -1,4 +1,3 @@
-import { addDays } from "@/lib/dates";
 import { isCashflowExcluded } from "./categories";
 
 // Pure aggregation over rows already loaded from the database.
@@ -121,32 +120,4 @@ export function netWorth(accounts: BalanceAccount[]): NetWorth {
     byType[a.type] = round2((byType[a.type] ?? 0) + balance);
   }
   return { net_worth: round2(assets - liabilities), assets: round2(assets), liabilities: round2(liabilities), by_type: byType };
-}
-
-export type Snapshot = { account_id: string; snapshot_date: string; current_balance: number | null };
-export type NetWorthPoint = { date: string; net_worth: number; assets: number; liabilities: number };
-
-/**
- * Daily net worth from balance snapshots. Days without a snapshot carry the
- * account's previous balance forward; days before any data are omitted.
- */
-export function netWorthSeries(accounts: BalanceAccount[], snapshots: Snapshot[], from: string, to: string): NetWorthPoint[] {
-  const types = new Map(accounts.map((a) => [a.id, a.type]));
-  const byDate = new Map<string, Snapshot[]>();
-  // Seed with the latest snapshot before the range so balances carry in.
-  const latest = new Map<string, number>();
-  for (const s of [...snapshots].sort((a, b) => a.snapshot_date.localeCompare(b.snapshot_date))) {
-    if (!types.has(s.account_id)) continue;
-    if (s.snapshot_date < from) latest.set(s.account_id, s.current_balance ?? 0);
-    else byDate.set(s.snapshot_date, [...(byDate.get(s.snapshot_date) ?? []), s]);
-  }
-
-  const points: NetWorthPoint[] = [];
-  for (let day = from; day <= to; day = addDays(day, 1)) {
-    for (const s of byDate.get(day) ?? []) latest.set(s.account_id, s.current_balance ?? 0);
-    if (latest.size === 0) continue;
-    const nw = netWorth([...latest].map(([id, balance]) => ({ id, type: types.get(id)!, current_balance: balance })));
-    points.push({ date: day, net_worth: nw.net_worth, assets: nw.assets, liabilities: nw.liabilities });
-  }
-  return points;
 }
