@@ -36,6 +36,20 @@ export const STATE_CENTROIDS: Record<string, [number, number]> = {
   WA: [47.4, -120.5], WV: [38.6, -80.6], WI: [44.6, -89.9], WY: [43.0, -107.6],
 };
 
+export const STATE_NAMES: Record<string, string> = {
+  AL: "Alabama", AK: "Alaska", AZ: "Arizona", AR: "Arkansas", CA: "California", CO: "Colorado",
+  CT: "Connecticut", DE: "Delaware", DC: "Washington, DC", FL: "Florida", GA: "Georgia", HI: "Hawaii",
+  ID: "Idaho", IL: "Illinois", IN: "Indiana", IA: "Iowa", KS: "Kansas", KY: "Kentucky", LA: "Louisiana",
+  ME: "Maine", MD: "Maryland", MA: "Massachusetts", MI: "Michigan", MN: "Minnesota", MS: "Mississippi",
+  MO: "Missouri", MT: "Montana", NE: "Nebraska", NV: "Nevada", NH: "New Hampshire", NJ: "New Jersey",
+  NM: "New Mexico", NY: "New York", NC: "North Carolina", ND: "North Dakota", OH: "Ohio", OK: "Oklahoma",
+  OR: "Oregon", PA: "Pennsylvania", RI: "Rhode Island", SC: "South Carolina", SD: "South Dakota",
+  TN: "Tennessee", TX: "Texas", UT: "Utah", VT: "Vermont", VA: "Virginia", WA: "Washington",
+  WV: "West Virginia", WI: "Wisconsin", WY: "Wyoming", PR: "Puerto Rico",
+};
+
+export const stateName = (code: string | null) => (code ? (STATE_NAMES[code] ?? code) : "Unknown");
+
 const COS_LAT = Math.cos((38 * Math.PI) / 180);
 const LON0 = -125;
 const LAT0 = 49.6;
@@ -73,11 +87,12 @@ function nearestState([x, y]: [number, number]): string {
 
 export type MapDot = { x: number; y: number; state: string };
 
-let cache: { spacing: number; dots: MapDot[] } | null = null;
+const cache = new Map<number, MapDot[]>();
 
 /** Hex grid of dots inside the outline, each tagged with its (approximate) state. */
 export function mapDots(spacing = 0.62): MapDot[] {
-  if (cache?.spacing === spacing) return cache.dots;
+  const cached = cache.get(spacing);
+  if (cached) return cached;
   const dots: MapDot[] = [];
   const rowH = spacing * 0.866;
   for (let row = 0, y = 0.3; y < MAP_HEIGHT; row++, y += rowH) {
@@ -85,8 +100,26 @@ export function mapDots(spacing = 0.62): MapDot[] {
       if (inside([x, y])) dots.push({ x, y, state: nearestState([x, y]) });
     }
   }
-  cache = { spacing, dots };
+  cache.set(spacing, dots);
   return dots;
+}
+
+export type Box = { x: number; y: number; w: number; h: number };
+
+/** Bounding box of a state's dots (null for states off the contiguous map). */
+export function stateBox(code: string): Box | null {
+  let minX = Infinity;
+  let minY = Infinity;
+  let maxX = -Infinity;
+  let maxY = -Infinity;
+  for (const d of mapDots(0.4)) {
+    if (d.state !== code) continue;
+    minX = Math.min(minX, d.x);
+    minY = Math.min(minY, d.y);
+    maxX = Math.max(maxX, d.x);
+    maxY = Math.max(maxY, d.y);
+  }
+  return minX === Infinity ? null : { x: minX, y: minY, w: maxX - minX, h: maxY - minY };
 }
 
 function hash(text: string): number {
@@ -110,4 +143,10 @@ export function placePoint(p: { city: string; region: string | null; lat: number
   const a = hash(p.city.toLowerCase()) * Math.PI * 2;
   const r = 0.35 + hash(`${p.city}!`) * 0.75;
   return project(center[0] + Math.sin(a) * r * 0.8, center[1] + Math.cos(a) * r);
+}
+
+/** A state's center in map coordinates (null for states off the contiguous map). */
+export function stateCenter(code: string): [number, number] | null {
+  const c = STATE_CENTROIDS[code];
+  return c ? project(c[0], c[1]) : null;
 }

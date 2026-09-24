@@ -19,6 +19,10 @@ Backend and UI are built and verified against Plaid sandbox, on desktop and phon
 | Subscriptions | Monthly/yearly cost, possibly-cancelled, fix misclassifications |
 | Bills | Upcoming charges, calendar of bills and paydays |
 | Accounts | Net worth, banks and accounts, connect / repair / remove via Plaid Link |
+| Settings | Profile, privacy mode, cents, week start, default chart range, monthly budget, alert thresholds, password, sign out everywhere, CSV export, delete all data |
+
+The spending map is interactive: drag to pan; pinch, double-click, or Ctrl/⌘ + scroll to zoom;
+switch between States and Cities; click a state to zoom in and list its cities.
 
 ## Going live with your real banks
 
@@ -88,7 +92,7 @@ Amounts follow Plaid: **positive = money out, negative = money in.**
 | --- | --- | --- |
 | GET | `/api/health` | Liveness: env configured, database reachable |
 | POST | `/api/auth/login` | Sign in `{email, password}`; sets cookies, returns token |
-| POST | `/api/auth/logout` | Sign out |
+| POST | `/api/auth/logout` | Sign out (`{scope: "global"}` for every device) |
 | GET | `/api/auth/session` | Current user |
 | POST | `/api/plaid/link-token` | Token to open Plaid Link; `{item_id}` for repair mode |
 | POST | `/api/plaid/exchange` | Save a new connection `{public_token}`; syncs in background |
@@ -108,6 +112,11 @@ Amounts follow Plaid: **positive = money out, negative = money in.**
 | GET | `/api/spending/daily?days=84` | Spending and income per day (heatmap) |
 | GET | `/api/spending/breakdown?month=YYYY-MM` | A month's categories vs last month, top merchants, running total |
 | GET | `/api/spending/locations?days=90` | Spending by city and state, plus online |
+| GET/PATCH | `/api/settings` | Profile and preferences (partial updates are merged) |
+| POST | `/api/settings/password` | Change password `{current_password, new_password}` |
+| POST | `/api/settings/delete-data` | Disconnect all banks and delete all data `{confirm: "DELETE"}` |
+| GET | `/api/alerts` | Notification bell: connections, low balance, large purchases, bills, budget |
+| GET | `/api/export/transactions` | CSV download of every transaction |
 | POST | `/api/plaid/webhook` | Plaid webhooks (signature-verified) |
 | POST | `/api/plaid/update-webhooks` | Point existing connections at `PLAID_WEBHOOK_URL` |
 | GET | `/api/cron/sync` | Sync everything; needs `Authorization: Bearer <CRON_SECRET>` |

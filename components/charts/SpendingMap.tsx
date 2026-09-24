@@ -1,88 +1,438 @@
 "use client";
 
-import { ArrowUpRight, Globe, MapPin } from "lucide-react";
-import Link from "next/link";
-import { useId, useMemo } from "react";
-import { cx } from "@/components/ui";
+import { ArrowLeft, Globe, LocateFixed, MapPin, Minus, Plus, RotateCcw } from "lucide-react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
+import { cx, Segmented } from "@/components/ui";
 import type { LocationsResponse } from "@/lib/client/types";
 import { money, moneyWhole } from "@/lib/format";
-import { MAP_HEIGHT, MAP_WIDTH, mapDots, placePoint } from "@/lib/geo/us";
+import { MAP_HEIGHT, MAP_WIDTH, mapDots, placePoint, stateBox, stateCenter, stateName } from "@/lib/geo/us";
+import { boxOf, clampView, fitBox, fullView, lerpView, zoomAt, zoomOf, type Bounds, type View } from "@/lib/geo/viewport";
+import { useWidth } from "./useWidth";
 
-// Dark "Product Distributor"-style card: hex-dot US map shaded by spending per
-// state, glowing markers for top places, white chips on the top two, and a
-// frosted list of places.
+// Interactive hex-dot spending map ("Product Distributor" style):
+//   * zoom: +/- buttons, pinch, Ctrl/⌘ + scroll, double-click
+//   * pan: drag (on phones, once zoomed in, so the page still scrolls at 1x)
+//   * States view shades states by spending; Cities view shows a marker per city
+//   * click a state (map or list) to zoom in and list its cities
+//   * labels and dot density adapt to the zoom level
 
+const BOUNDS: Bounds = { width: MAP_WIDTH, height: MAP_HEIGHT, maxZoom: 10 };
 const BASE_DOT = "#2A2A31";
+const ASPECT = MAP_WIDTH / MAP_HEIGHT;
 
-export function SpendingMap({
-  data,
-  compact,
-  listSize = 5,
-  action,
-}: {
-  data: LocationsResponse;
-  compact?: boolean;
-  listSize?: number;
-  action?: React.ReactNode;
-}) {
+type Mode = "states" | "cities";
+type Target = { kind: "state" | "place"; key: string };
+type Hover = (Target & { x: number; y: number }) | null;
+type Gesture = {
+  startView: View;
+  startX: number;
+  startY: number;
+  moved: boolean;
+  target: Target | null;
+  pinchDist?: number;
+  pinchCenter?: [number, number];
+};
+
+function targetOf(el: EventTarget | null): Target | null {
+  const node = el instanceof Element ? el : null;
+  const place = node?.closest("[data-place]")?.getAttribute("data-place");
+  if (place) return { kind: "place", key: place };
+  const state = node?.closest("[data-state]")?.getAttribute("data-state");
+  return state ? { kind: "state", key: state } : null;
+}
+
+const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
+
+const dist = (a: { x: number; y: number }, b: { x: number; y: number }) => Math.hypot(a.x - b.x, a.y - b.y);
+
+function MapButton({ label, disabled, onClick, children }: { label: string; disabled?: boolean; onClick: () => void; children: React.ReactNode }) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      aria-label={label}
+      title={label}
+      className="grid size-9 place-items-center rounded-full border border-white/10 bg-ink/70 text-white backdrop-blur transition-colors hover:bg-white/15 disabled:opacity-30 [&>svg]:size-4"
+    >
+      {children}
+    </button>
+  );
+}
+
+export function SpendingMap({ data, action, listSize = 6 }: { data: LocationsResponse; action?: React.ReactNode; listSize?: number }) {
   const glowId = useId();
-  const dots = useMemo(() => mapDots(compact ? 0.72 : 0.6), [compact]);
-  const regionTotals = useMemo(() => new Map(data.regions.map((r) => [r.region, r.total])), [data.regions]);
+  const [mode, setMode] = useState<Mode>("states");
+  const [focus, setFocus] = useState<string | null>(null);
+  const [selected, setSelected] = useState<string | null>(null);
+  const [view, setViewState] = useState<View>(() => fullView(BOUNDS));
+  const [hover, setHover] = useState<Hover>(null);
+  const [wrapRef, width] = useWidth<HTMLDivElement>();
+  const svgRef = useRef<SVGSVGElement>(null);
+  const viewRef = useRef(view);
+  const anim = useRef<number | null>(null);
+  const pointers = useRef(new Map<number, { x: number; y: number }>());
+  const gesture = useRef<Gesture | null>(null);
+
+  const setView = useCallback((v: View) => {
+    viewRef.current = v;
+    setViewState(v);
+  }, []);
+
+  const animateTo = useCallback(
+    (target: View) => {
+      if (anim.current) cancelAnimationFrame(anim.current);
+      const from = viewRef.current;
+      const start = performance.now();
+      const step = (now: number) => {
+        const t = Math.min(1, (now - start) / 380);
+        setView(lerpView(from, target, t));
+        anim.current = t < 1 ? requestAnimationFrame(step) : null;
+      };
+      anim.current = requestAnimationFrame(step);
+    },
+    [setView],
+  );
+  useEffect(() => () => void (anim.current && cancelAnimationFrame(anim.current)), []);
+
+  // ---- data -------------------------------------------------------------
+  const markers = useMemo(() => {
+    const max = Math.max(1, ...data.places.map((p) => p.total));
+    return data.places.map((p) => ({ p, key: `${p.city}|${p.region ?? ""}`, xy: placePoint(p), weight: Math.sqrt(p.total / max) }));
+  }, [data.places]);
+  const regionTotals = useMemo(() => new Map(data.regions.map((r) => [r.region, r])), [data.regions]);
+  const citiesPerRegion = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const p of data.places) if (p.region) m.set(p.region, (m.get(p.region) ?? 0) + 1);
+    return m;
+  }, [data.places]);
   const maxRegion = Math.max(1, ...data.regions.map((r) => r.total));
 
-  const markers = useMemo(() => {
-    const maxPlace = Math.max(1, ...data.places.map((p) => p.total));
-    return data.places
-      .slice(0, 12)
-      .map((p) => ({ p, xy: placePoint(p), weight: Math.sqrt(p.total / maxPlace) }))
-      .filter((m): m is { p: (typeof data.places)[number]; xy: [number, number]; weight: number } => m.xy !== null);
-  }, [data]);
+  // A new period (30D / 90D / 1Y) resets any drill-down.
+  const [prevData, setPrevData] = useState(data);
+  if (prevData !== data) {
+    setPrevData(data);
+    setFocus(null);
+    setSelected(null);
+  }
 
-  const list = [
-    ...data.places.slice(0, listSize).map((p) => ({ key: `${p.city}|${p.region}`, label: p.city, sub: p.region ?? p.country ?? "", total: p.total, online: false })),
-    ...(data.online.total > 0 ? [{ key: "online", label: "Online", sub: `${data.online.count} purchases`, total: data.online.total, online: true }] : []),
-  ];
+  // ---- view helpers -----------------------------------------------------
+  const zoom = zoomOf(view, BOUNDS);
+  const zoomed = zoom > 1.01;
+  const height = width / ASPECT;
+  const unit = view.w / Math.max(1, width); // map units per screen pixel
+
+  function toMap(clientX: number, clientY: number): [number, number] {
+    const rect = svgRef.current!.getBoundingClientRect();
+    const v = viewRef.current;
+    return [v.x + ((clientX - rect.left) / rect.width) * v.w, v.y + ((clientY - rect.top) / rect.height) * v.h];
+  }
+  const toScreen = (x: number, y: number): [number, number] => [((x - view.x) / view.w) * width, ((y - view.y) / view.h) * height];
+
+  function zoomButton(factor: number) {
+    const v = viewRef.current;
+    animateTo(zoomAt(v, factor, v.x + v.w / 2, v.y + v.h / 2, BOUNDS));
+  }
+
+  function focusState(code: string) {
+    setFocus(code);
+    setSelected(null);
+    const box = stateBox(code);
+    if (box) animateTo(fitBox(box, BOUNDS, 0.25));
+  }
+
+  function selectPlace(key: string) {
+    const m = markers.find((x) => x.key === key);
+    if (!m) return;
+    setSelected(key);
+    if (m.p.region) setFocus(m.p.region);
+    if (m.xy) animateTo(fitBox({ x: m.xy[0], y: m.xy[1], w: 0, h: 0 }, BOUNDS, 0, MAP_WIDTH / 5));
+  }
+
+  function reset() {
+    setFocus(null);
+    setSelected(null);
+    animateTo(fullView(BOUNDS));
+  }
+
+  function fitSpending() {
+    const pts = markers.filter((m) => m.xy && (!focus || m.p.region === focus)).map((m) => m.xy!);
+    const box = boxOf(pts);
+    animateTo(box ? fitBox(box, BOUNDS, 0.35, MAP_WIDTH / 6) : fullView(BOUNDS));
+  }
+
+  function activate(t: Target) {
+    if (t.kind === "state") {
+      if (regionTotals.has(t.key) || citiesPerRegion.has(t.key)) focusState(t.key);
+    } else selectPlace(t.key);
+  }
+
+  // ---- gestures ---------------------------------------------------------
+  function onPointerDown(e: React.PointerEvent<SVGSVGElement>) {
+    if (anim.current) cancelAnimationFrame(anim.current);
+    e.currentTarget.setPointerCapture(e.pointerId);
+    pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (pointers.current.size === 1) {
+      gesture.current = { startView: viewRef.current, startX: e.clientX, startY: e.clientY, moved: false, target: targetOf(e.target) };
+    } else if (pointers.current.size === 2 && gesture.current) {
+      const [a, b] = [...pointers.current.values()] as [{ x: number; y: number }, { x: number; y: number }];
+      gesture.current = {
+        ...gesture.current,
+        moved: true,
+        startView: viewRef.current,
+        pinchDist: dist(a, b),
+        pinchCenter: toMap((a.x + b.x) / 2, (a.y + b.y) / 2),
+      };
+    }
+  }
+
+  function onPointerMove(e: React.PointerEvent<SVGSVGElement>) {
+    const g = gesture.current;
+    if (!pointers.current.has(e.pointerId) || !g) {
+      // Plain hover (mouse): show a tooltip for the state or city under the cursor.
+      if (e.pointerType !== "mouse") return;
+      const t = targetOf(e.target);
+      const rect = e.currentTarget.getBoundingClientRect();
+      setHover(t ? { ...t, x: e.clientX - rect.left, y: e.clientY - rect.top } : null);
+      return;
+    }
+    pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+
+    if (pointers.current.size >= 2 && g.pinchDist && g.pinchCenter) {
+      const [a, b] = [...pointers.current.values()] as [{ x: number; y: number }, { x: number; y: number }];
+      setView(zoomAt(g.startView, dist(a, b) / g.pinchDist, g.pinchCenter[0], g.pinchCenter[1], BOUNDS));
+      return;
+    }
+    const dx = e.clientX - g.startX;
+    const dy = e.clientY - g.startY;
+    if (!g.moved && Math.hypot(dx, dy) < 4) return;
+    g.moved = true;
+    setHover(null);
+    const rect = e.currentTarget.getBoundingClientRect();
+    const v = g.startView;
+    setView(clampView({ ...v, x: v.x - (dx / rect.width) * v.w, y: v.y - (dy / rect.height) * v.h }, BOUNDS));
+  }
+
+  function endPointer(e: React.PointerEvent<SVGSVGElement>, cancelled: boolean) {
+    pointers.current.delete(e.pointerId);
+    const g = gesture.current;
+    if (pointers.current.size === 0) {
+      if (!cancelled && g && !g.moved && g.target) activate(g.target);
+      gesture.current = null;
+    } else if (g) {
+      // One finger lifted from a pinch: continue as a pan from here.
+      const [rest] = [...pointers.current.values()] as [{ x: number; y: number }];
+      gesture.current = { startView: viewRef.current, startX: rest.x, startY: rest.y, moved: true, target: null };
+    }
+  }
+
+  // Ctrl/⌘ + wheel zooms (this is also what a trackpad pinch sends); plain
+  // scrolling keeps scrolling the page.
+  useEffect(() => {
+    const svg = svgRef.current;
+    if (!svg) return;
+    const onWheel = (e: WheelEvent) => {
+      if (!(e.ctrlKey || e.metaKey)) return;
+      e.preventDefault();
+      const rect = svg.getBoundingClientRect();
+      const v = viewRef.current;
+      const cxm = v.x + ((e.clientX - rect.left) / rect.width) * v.w;
+      const cym = v.y + ((e.clientY - rect.top) / rect.height) * v.h;
+      setView(zoomAt(v, Math.exp(-e.deltaY * 0.01), cxm, cym, BOUNDS));
+    };
+    svg.addEventListener("wheel", onWheel, { passive: false });
+    return () => svg.removeEventListener("wheel", onWheel);
+  }, [setView, width]);
+
+  // ---- render data ------------------------------------------------------
+  const spacing = zoom < 1.8 ? 0.6 : zoom < 3.5 ? 0.36 : 0.22;
+  const radius = spacing * 0.36;
+  const dots = useMemo(() => {
+    const pad = spacing * 2;
+    return mapDots(spacing).filter(
+      (d) => d.x >= view.x - pad && d.x <= view.x + view.w + pad && d.y >= view.y - pad && d.y <= view.y + view.h + pad,
+    );
+  }, [spacing, view]);
+
+  const showMarkers = mode === "cities" || focus !== null;
+  const visibleMarkers = markers.filter((m) => m.xy && (mode === "cities" || m.p.region === focus));
+  const hoverState = hover?.kind === "state" ? hover.key : null;
+
+  // Chips: more labels as you zoom in, skipping any that would overlap.
+  type Chip = { key: string; title: string; amount: number; x: number; y: number; w: number; below: boolean; active: boolean };
+  type Candidate = Omit<Chip, "x" | "y" | "w" | "below"> & { xy: [number, number] };
+  const chips: Chip[] = [];
+  const small = width < 520;
+  if (width > 0) {
+    const candidates: Candidate[] = [];
+    if (showMarkers) {
+      for (const m of visibleMarkers)
+        candidates.push({ key: m.key, title: m.p.region ? `${m.p.city}, ${m.p.region}` : m.p.city, amount: m.p.total, xy: m.xy!, active: m.key === selected });
+    } else {
+      for (const r of data.regions) {
+        const c = stateCenter(r.region);
+        if (c) candidates.push({ key: r.region, title: small ? r.region : stateName(r.region), amount: r.total, xy: c, active: r.region === hoverState });
+      }
+    }
+    candidates.sort((a, b) => Number(b.active) - Number(a.active) || b.amount - a.amount);
+    const base = showMarkers ? [3, 6, 12] : [4, 8, 14];
+    const tier = base[zoom < 1.5 ? 0 : zoom < 3 ? 1 : 2]!;
+    const limit = small ? Math.ceil(tier / 2) : tier;
+    // Reserve the control column (top right) and zoom readout (bottom left).
+    const placed: { l: number; t: number; r: number; b: number }[] = [
+      { l: width - 52, t: 0, r: width, b: 176 },
+      { l: 0, t: height - 30, r: 56, b: height },
+    ];
+    for (const c of candidates) {
+      if (chips.length >= limit) break;
+      const [sx, sy] = toScreen(c.xy[0], c.xy[1]);
+      if (sx < 0 || sx > width || sy < 0 || sy > height) continue;
+      const w = (c.title.length + money(c.amount).length) * (small ? 6.2 : 7) + 34;
+      // Flip below the point near the top edge; keep the chip inside the frame.
+      const below = sy < 44;
+      const cxClamped = Math.min(Math.max(sx, w / 2 + 4), width - w / 2 - 4);
+      const rect = below
+        ? { l: cxClamped - w / 2, t: sy + 8, r: cxClamped + w / 2, b: sy + 40 }
+        : { l: cxClamped - w / 2, t: sy - 40, r: cxClamped + w / 2, b: sy - 8 };
+      if (placed.some((p) => rect.l < p.r && rect.r > p.l && rect.t < p.b && rect.b > p.t)) continue;
+      placed.push(rect);
+      chips.push({ key: c.key, title: c.title, amount: c.amount, active: c.active, x: cxClamped, y: sy, w, below });
+    }
+  }
+
+  // Tooltip text.
+  let tooltip: string | null = null;
+  if (hover?.kind === "state") {
+    const r = regionTotals.get(hover.key);
+    const n = citiesPerRegion.get(hover.key) ?? 0;
+    tooltip = r
+      ? `${stateName(hover.key)} · ${money(r.total)} · ${plural(r.count, "purchase")} · ${plural(n, "city", "cities")}`
+      : `${stateName(hover.key)} · no spending`;
+  } else if (hover?.kind === "place") {
+    const m = markers.find((x) => x.key === hover.key);
+    if (m) tooltip = `${m.p.city}${m.p.region ? `, ${m.p.region}` : ""} · ${money(m.p.total)} · ${plural(m.p.count, "purchase")}`;
+  }
+
+  // Side list.
+  const listPlaces = data.places.filter((p) => !focus || p.region === focus);
+  const focusTotal = focus ? regionTotals.get(focus) : null;
   const hasData = data.places.length > 0 || data.online.total > 0;
 
   return (
-    <div className="relative overflow-hidden">
-      <div className={cx("flex items-center justify-between gap-3", compact ? "mb-2" : "mb-4")}>
+    <div>
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <h2 className="text-[17px] font-medium text-white sm:text-lg">Where you spend</h2>
-        {action ?? (
-          <Link href="/spending#map" className="inline-flex items-center gap-1.5 rounded-full border border-white/15 px-3.5 py-1.5 text-sm text-white/85 transition-colors hover:bg-white/10">
-            See more <ArrowUpRight className="size-4" />
-          </Link>
-        )}
+        <div className="flex flex-wrap items-center gap-2">
+          <Segmented
+            dark
+            size="sm"
+            options={[
+              { value: "states", label: "States" },
+              { value: "cities", label: "Cities" },
+            ]}
+            value={mode}
+            onChange={setMode}
+          />
+          {action}
+        </div>
       </div>
 
-      <div className={cx("grid gap-4", compact ? "lg:grid-cols-1" : "md:grid-cols-[minmax(0,260px)_1fr]")}>
-        {/* Frosted list of top places (overlaps the map on wide compact cards, like the reference). */}
-        <ul
-          className={cx(
-            "z-10 flex flex-col gap-2 rounded-3xl border border-white/10 bg-white/[0.04] p-2 backdrop-blur-md",
-            compact && "order-2 lg:absolute lg:bottom-0 lg:left-0 lg:w-[250px]",
-          )}
-        >
-          {hasData ? (
-            list.map((row) => (
-              <li key={row.key} className="flex items-center gap-3 rounded-2xl border border-white/8 bg-white/[0.03] px-3 py-2.5">
-                <span className="grid size-8 shrink-0 place-items-center rounded-full bg-white/10 text-white/80 [&>svg]:size-4">
-                  {row.online ? <Globe /> : <MapPin />}
+      <div className="grid gap-4 md:grid-cols-[minmax(0,260px)_1fr]">
+        {/* Frosted list: states, or cities (all or within the focused state). */}
+        <div className="order-2 flex min-w-0 flex-col rounded-3xl border border-white/10 bg-white/[0.04] p-2 backdrop-blur-md md:order-1">
+          <div className="flex items-center gap-2 px-2 pt-1 pb-2">
+            {focus ? (
+              <button onClick={reset} aria-label="Back to all states" className="grid size-7 place-items-center rounded-full bg-white/10 text-white hover:bg-white/20">
+                <ArrowLeft className="size-3.5" />
+              </button>
+            ) : null}
+            <p className="min-w-0 flex-1 truncate text-sm text-white/80">
+              {focus ? stateName(focus) : mode === "states" ? "Top states" : "Top cities"}
+            </p>
+            {focusTotal ? <span className="text-sm font-medium text-white tabular">{moneyWhole(focusTotal.total)}</span> : null}
+          </div>
+          <ul className="flex max-h-[340px] flex-col gap-1.5 overflow-y-auto">
+            {!hasData ? (
+              <li className="px-3 py-6 text-center text-sm text-white/50">No purchases with a location in this period yet.</li>
+            ) : !focus && mode === "states" ? (
+              data.regions.slice(0, listSize + 2).map((r) => (
+                <li key={r.region}>
+                  <button
+                    onClick={() => focusState(r.region)}
+                    onMouseEnter={() => setHover(null)}
+                    className="flex w-full items-center gap-3 rounded-2xl border border-white/8 bg-white/[0.03] px-3 py-2.5 text-left transition-colors hover:bg-white/10"
+                  >
+                    <span className="grid size-8 shrink-0 place-items-center rounded-full bg-white/10 text-[11px] font-medium text-white/85">{r.region}</span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-sm text-white">{stateName(r.region)}</span>
+                      <span className="block truncate text-xs text-white/45">
+                        {plural(citiesPerRegion.get(r.region) ?? 0, "city", "cities")} · {plural(r.count, "purchase")}
+                      </span>
+                    </span>
+                    <span className="text-sm font-medium text-white tabular">{moneyWhole(r.total)}</span>
+                  </button>
+                </li>
+              ))
+            ) : (
+              listPlaces.slice(0, focus ? 30 : listSize + 2).map((p) => {
+                const key = `${p.city}|${p.region ?? ""}`;
+                return (
+                  <li key={key}>
+                    <button
+                      onClick={() => selectPlace(key)}
+                      className={cx(
+                        "flex w-full items-center gap-3 rounded-2xl border px-3 py-2.5 text-left transition-colors",
+                        key === selected ? "border-brand/60 bg-brand/15" : "border-white/8 bg-white/[0.03] hover:bg-white/10",
+                      )}
+                    >
+                      <span className="grid size-8 shrink-0 place-items-center rounded-full bg-white/10 text-white/80">
+                        <MapPin className="size-4" />
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-sm text-white">{p.city}</span>
+                        <span className="block truncate text-xs text-white/45">
+                          {p.region ?? p.country ?? ""} · {plural(p.count, "purchase")}
+                        </span>
+                      </span>
+                      <span className="text-sm font-medium text-white tabular">{moneyWhole(p.total)}</span>
+                    </button>
+                  </li>
+                );
+              })
+            )}
+            {!focus && data.online.total > 0 ? (
+              <li className="flex items-center gap-3 rounded-2xl border border-white/8 bg-white/[0.03] px-3 py-2.5">
+                <span className="grid size-8 shrink-0 place-items-center rounded-full bg-white/10 text-white/80">
+                  <Globe className="size-4" />
                 </span>
                 <span className="min-w-0 flex-1">
-                  <span className="block truncate text-sm text-white">{row.label}</span>
-                  <span className="block truncate text-xs text-white/45">{row.sub}</span>
+                  <span className="block text-sm text-white">Online</span>
+                  <span className="block text-xs text-white/45">{plural(data.online.count, "purchase")}</span>
                 </span>
-                <span className="text-sm font-medium text-white tabular">{moneyWhole(row.total)}</span>
+                <span className="text-sm font-medium text-white tabular">{moneyWhole(data.online.total)}</span>
               </li>
-            ))
-          ) : (
-            <li className="px-3 py-6 text-center text-sm text-white/50">No purchases with a location in this period yet.</li>
-          )}
-        </ul>
+            ) : null}
+          </ul>
+        </div>
 
-        <div className={cx("relative", compact && "order-1 lg:ml-[200px]")}>
-          <svg viewBox={`0 0 ${MAP_WIDTH} ${MAP_HEIGHT}`} className="h-auto w-full" role="img" aria-label="Map of spending by state">
+        {/* Map */}
+        <div ref={wrapRef} className="relative order-1 min-w-0 overflow-hidden rounded-3xl md:order-2">
+          <svg
+            ref={svgRef}
+            viewBox={`${view.x} ${view.y} ${view.w} ${view.h}`}
+            className={cx("block h-auto w-full select-none", zoomed ? "cursor-grab active:cursor-grabbing" : "cursor-pointer")}
+            style={{ touchAction: zoomed ? "none" : "pan-y", aspectRatio: `${ASPECT}` }}
+            role="img"
+            aria-label="Interactive map of spending by state and city"
+            onPointerDown={onPointerDown}
+            onPointerMove={onPointerMove}
+            onPointerUp={(e) => endPointer(e, false)}
+            onPointerCancel={(e) => endPointer(e, true)}
+            onPointerLeave={() => setHover(null)}
+            onDoubleClick={(e) => {
+              const [mx, my] = toMap(e.clientX, e.clientY);
+              animateTo(zoomAt(viewRef.current, 2, mx, my, BOUNDS));
+            }}
+          >
             <defs>
               <radialGradient id={glowId}>
                 <stop offset="0" stopColor="#5B91FF" stopOpacity="0.9" />
@@ -90,46 +440,83 @@ export function SpendingMap({
               </radialGradient>
             </defs>
             {dots.map((d, i) => {
-              const total = regionTotals.get(d.state);
-              const t = total ? Math.sqrt(total / maxRegion) : 0;
+              const r = regionTotals.get(d.state);
+              const t = r ? Math.sqrt(r.total / maxRegion) : 0;
+              let opacity = r ? 0.3 + t * 0.7 : 1;
+              if (r && mode === "cities" && !focus) opacity = 0.16 + t * 0.3;
+              if (focus && d.state !== focus) opacity *= 0.35;
+              const hovered = d.state === hoverState;
               return (
                 <circle
                   key={i}
                   cx={d.x}
                   cy={d.y}
-                  r={compact ? 0.25 : 0.21}
-                  fill={total ? "#5B91FF" : BASE_DOT}
-                  fillOpacity={total ? 0.28 + t * 0.72 : 1}
+                  r={radius}
+                  data-state={d.state}
+                  fill={hovered ? (r ? "#A8C4FF" : "#3A3A44") : r ? "#5B91FF" : BASE_DOT}
+                  fillOpacity={hovered ? 1 : opacity}
                 />
               );
             })}
-            {markers.map(({ p, xy, weight }) => (
-              <g key={`${p.city}|${p.region}`}>
-                <circle cx={xy[0]} cy={xy[1]} r={0.9 + weight * 1.6} fill={`url(#${glowId})`} />
-                <circle cx={xy[0]} cy={xy[1]} r={0.28 + weight * 0.2} fill="#fff" />
-              </g>
-            ))}
+            {showMarkers
+              ? visibleMarkers.map((m) => {
+                  const [x, y] = m.xy!;
+                  const active = m.key === selected || (hover?.kind === "place" && hover.key === m.key);
+                  return (
+                    <g key={m.key} data-place={m.key}>
+                      <circle cx={x} cy={y} r={(10 + m.weight * 18) * unit} fill={`url(#${glowId})`} />
+                      <circle cx={x} cy={y} r={(3.5 + m.weight * 4.5) * unit} fill="#fff" stroke={active ? "#5B91FF" : "none"} strokeWidth={3 * unit} />
+                      {/* generous invisible hit area for fingers */}
+                      <circle cx={x} cy={y} r={14 * unit} fill="transparent" />
+                    </g>
+                  );
+                })
+              : null}
           </svg>
-          {/* Chips for the top two places, positioned in % so they track the SVG. */}
-          {markers.slice(0, 2).map(({ p, xy }, i) => (
+
+          {/* Chips (HTML so text stays crisp at any zoom). */}
+          {chips.map((c) => (
             <div
-              key={`chip-${p.city}`}
-              className="pointer-events-none absolute flex items-center gap-2 rounded-xl bg-white px-2.5 py-1.5 text-xs whitespace-nowrap text-ink shadow-lg sm:text-[13px]"
-              style={{
-                left: `${Math.min(Math.max((xy[0] / MAP_WIDTH) * 100, 14), 86)}%`,
-                top: `${(xy[1] / MAP_HEIGHT) * 100}%`,
-                transform: `translate(-50%, ${i === 0 ? "-135%" : "35%"})`,
-              }}
+              key={c.key}
+              className={cx(
+                "pointer-events-none absolute flex items-center gap-2 rounded-xl px-2.5 py-1.5 text-xs whitespace-nowrap shadow-lg transition-opacity sm:text-[13px]",
+                c.active ? "bg-brand text-white" : "bg-white text-ink",
+              )}
+              style={{ left: c.x, top: c.y, transform: c.below ? "translate(-50%, 10px)" : "translate(-50%, calc(-100% - 10px))" }}
             >
-              <span className="font-medium">
-                {p.city}
-                {p.region ? `, ${p.region}` : ""}
-              </span>
-              <span className="tabular">{money(p.total)}</span>
+              <span className="font-medium">{c.title}</span>
+              <span className="tabular">{money(c.amount)}</span>
             </div>
           ))}
+
+          {tooltip && hover ? (
+            <div
+              className="pointer-events-none absolute z-10 rounded-xl bg-white/95 px-3 py-2 text-xs whitespace-nowrap text-ink shadow-xl"
+              style={{ left: Math.min(hover.x + 14, Math.max(0, width - 260)), top: Math.max(hover.y - 40, 4) }}
+            >
+              <span className="tabular">{tooltip}</span>
+            </div>
+          ) : null}
+
+          {/* Controls */}
+          <div className="absolute top-2 right-2 flex flex-col gap-1.5">
+            <MapButton label="Zoom in" disabled={zoom >= BOUNDS.maxZoom - 0.01} onClick={() => zoomButton(1.8)}>
+              <Plus />
+            </MapButton>
+            <MapButton label="Zoom out" disabled={!zoomed} onClick={() => zoomButton(1 / 1.8)}>
+              <Minus />
+            </MapButton>
+            <MapButton label="Fit to my spending" disabled={markers.every((m) => !m.xy)} onClick={() => fitSpending()}>
+              <LocateFixed />
+            </MapButton>
+            <MapButton label="Reset map" disabled={!zoomed && !focus} onClick={() => reset()}>
+              <RotateCcw />
+            </MapButton>
+          </div>
+          <span className="pointer-events-none absolute bottom-2 left-3 rounded-full bg-ink/60 px-2 py-0.5 text-[11px] text-white/60 [font-variant-numeric:tabular-nums]">{zoom.toFixed(1)}×</span>
         </div>
       </div>
+      <p className="mt-3 text-xs text-white/40">Drag to pan · pinch, double-click, or Ctrl/⌘ + scroll to zoom · click a state to see its cities</p>
     </div>
   );
 }
