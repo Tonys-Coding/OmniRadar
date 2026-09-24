@@ -5,6 +5,7 @@ import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react"
 import { cx, Segmented } from "@/components/ui";
 import type { LocationsResponse } from "@/lib/client/types";
 import { money, moneyWhole } from "@/lib/format";
+import { heatAt, heatWeights, type HeatSource } from "@/lib/geo/heat";
 import { MAP_HEIGHT, MAP_WIDTH, mapDots, placePoint, stateBox, stateCenter, stateName } from "@/lib/geo/us";
 import { boxOf, clampView, fitBox, fullView, lerpView, zoomAt, zoomOf, type Bounds, type View } from "@/lib/geo/viewport";
 import { useWidth } from "./useWidth";
@@ -18,6 +19,8 @@ import { useWidth } from "./useWidth";
 
 const BOUNDS: Bounds = { width: MAP_WIDTH, height: MAP_HEIGHT, maxZoom: 10 };
 const BASE_DOT = "#2A2A31";
+/** Dots of the selected state that are far from any city: a lifted gray so the shape reads. */
+const FOCUS_BODY = "#353A4A";
 const ASPECT = MAP_WIDTH / MAP_HEIGHT;
 
 type Mode = "states" | "cities";
@@ -56,6 +59,73 @@ function MapButton({ label, disabled, onClick, children }: { label: string; disa
     >
       {children}
     </button>
+  );
+}
+
+/** Pinned under the list: where the money went, or the selected state's stats. */
+function MapSummary({ data, focus }: { data: LocationsResponse; focus: string | null }) {
+  const inPerson = data.places.reduce((sum, p) => sum + p.total, 0);
+  if (focus) {
+    const state = data.regions.find((r) => r.region === focus);
+    const cities = data.places.filter((p) => p.region === focus);
+    const top = cities[0];
+    const share = inPerson > 0 && state ? state.total / inPerson : 0;
+    return (
+      <div className="mt-2 rounded-2xl bg-white/[0.06] p-3.5 text-white">
+        <p className="text-xs text-white/50">{stateName(focus)} summary</p>
+        <div className="mt-2 grid grid-cols-2 gap-3 text-sm">
+          <div>
+            <p className="text-white/45">Share of in-person</p>
+            <p className="font-medium tabular">{Math.round(share * 100)}%</p>
+          </div>
+          <div>
+            <p className="text-white/45">Purchases</p>
+            <p className="font-medium tabular">{state?.count ?? 0}</p>
+          </div>
+          <div className="col-span-2">
+            <p className="text-white/45">Top city</p>
+            <p className="truncate font-medium">
+              {top ? (
+                <>
+                  {top.city} · <span className="tabular">{money(top.total)}</span>
+                </>
+              ) : (
+                "-"
+              )}
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+  const parts = [
+    { label: "In person", value: inPerson, color: "#5B91FF" },
+    { label: "Online", value: data.online.total, color: "#A8C4FF" },
+    { label: "No location", value: data.unknown.total, color: "#4A4A55" },
+  ];
+  const total = parts.reduce((sum, p) => sum + p.value, 0);
+  return (
+    <div className="mt-2 rounded-2xl bg-white/[0.06] p-3.5 text-white">
+      <div className="flex items-baseline justify-between gap-2">
+        <p className="text-xs text-white/50">Where the money went</p>
+        <p className="text-sm font-medium tabular">{moneyWhole(total)}</p>
+      </div>
+      <div className="mt-2.5 flex h-2 gap-0.5 overflow-hidden rounded-full">
+        {parts.map((p) =>
+          p.value > 0 ? <div key={p.label} style={{ flexGrow: p.value, flexBasis: 0, background: p.color }} /> : null,
+        )}
+      </div>
+      <ul className="mt-2.5 space-y-1.5 text-xs">
+        {parts.map((p) => (
+          <li key={p.label} className="flex items-center gap-2">
+            <span className="size-2 rounded-full" style={{ background: p.color }} />
+            <span className="flex-1 text-white/60">{p.label}</span>
+            <span className="text-white/45 tabular">{total > 0 ? Math.round((p.value / total) * 100) : 0}%</span>
+            <span className="w-16 text-right font-medium tabular">{moneyWhole(p.value)}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }
 
@@ -169,7 +239,11 @@ export function SpendingMap({ data, action, listSize = 6 }: { data: LocationsRes
   // ---- gestures ---------------------------------------------------------
   function onPointerDown(e: React.PointerEvent<SVGSVGElement>) {
     if (anim.current) cancelAnimationFrame(anim.current);
-    e.currentTarget.setPointerCapture(e.pointerId);
+    try {
+      e.currentTarget.setPointerCapture(e.pointerId);
+    } catch {
+      // Pointer already gone (e.g. lifted before capture): nothing to track.
+    }
     pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
     if (pointers.current.size === 1) {
       gesture.current = { startView: viewRef.current, startX: e.clientX, startY: e.clientY, moved: false, target: targetOf(e.target) };
@@ -253,9 +327,31 @@ export function SpendingMap({ data, action, listSize = 6 }: { data: LocationsRes
     );
   }, [spacing, view]);
 
+  // Selected state: blue concentrates around its cities, stronger where more was spent.
+  const focusHeat = useMemo(() => {
+    if (!focus) return null;
+    const inState = markers.filter((m) => m.xy && m.p.region === focus);
+    const weights = heatWeights(inState.map((m) => m.p.total));
+    const sources: HeatSource[] = inState.map((m, i) => ({ xy: m.xy!, weight: weights[i]! }));
+    const box = stateBox(focus);
+    const radius = box ? Math.min(1.6, Math.max(0.45, Math.min(box.w, box.h) * 0.15)) : 0.8;
+    return { sources, radius };
+  }, [focus, markers]);
+
+  function dotStyle(state: string, x: number, y: number): { fill: string; opacity: number } {
+    if (focusHeat) {
+      if (state !== focus) return { fill: BASE_DOT, opacity: 1 };
+      const heat = heatAt(x, y, focusHeat.sources, focusHeat.radius);
+      return heat < 0.1 ? { fill: FOCUS_BODY, opacity: 1 } : { fill: "#5B91FF", opacity: 0.22 + heat * 0.78 };
+    }
+    const r = regionTotals.get(state);
+    if (!r) return { fill: BASE_DOT, opacity: 1 };
+    const t = Math.sqrt(r.total / maxRegion);
+    return { fill: "#5B91FF", opacity: mode === "cities" ? 0.16 + t * 0.3 : 0.3 + t * 0.7 };
+  }
+
   const showMarkers = mode === "cities" || focus !== null;
-  const visibleMarkers = markers.filter((m) => m.xy && (mode === "cities" || m.p.region === focus));
-  const hoverState = hover?.kind === "state" ? hover.key : null;
+  const visibleMarkers = markers.filter((m) => m.xy && (focus ? m.p.region === focus : mode === "cities"));
 
   // Chips: more labels as you zoom in, skipping any that would overlap.
   type Chip = { key: string; title: string; amount: number; x: number; y: number; w: number; below: boolean; active: boolean };
@@ -270,7 +366,7 @@ export function SpendingMap({ data, action, listSize = 6 }: { data: LocationsRes
     } else {
       for (const r of data.regions) {
         const c = stateCenter(r.region);
-        if (c) candidates.push({ key: r.region, title: small ? r.region : stateName(r.region), amount: r.total, xy: c, active: r.region === hoverState });
+        if (c) candidates.push({ key: r.region, title: small ? r.region : stateName(r.region), amount: r.total, xy: c, active: false });
       }
     }
     candidates.sort((a, b) => Number(b.active) - Number(a.active) || b.amount - a.amount);
@@ -338,7 +434,7 @@ export function SpendingMap({ data, action, listSize = 6 }: { data: LocationsRes
 
       <div className="grid gap-4 md:grid-cols-[minmax(0,260px)_1fr]">
         {/* Frosted list: states, or cities (all or within the focused state). */}
-        <div className="order-2 flex min-w-0 flex-col rounded-3xl border border-white/10 bg-white/[0.04] p-2 backdrop-blur-md md:order-1">
+        <div className="order-2 flex min-w-0 flex-col rounded-3xl border border-white/10 bg-white/[0.04] p-2 backdrop-blur-md md:order-1 md:max-h-[520px]">
           <div className="flex items-center gap-2 px-2 pt-1 pb-2">
             {focus ? (
               <button onClick={reset} aria-label="Back to all states" className="grid size-7 place-items-center rounded-full bg-white/10 text-white hover:bg-white/20">
@@ -350,7 +446,7 @@ export function SpendingMap({ data, action, listSize = 6 }: { data: LocationsRes
             </p>
             {focusTotal ? <span className="text-sm font-medium text-white tabular">{moneyWhole(focusTotal.total)}</span> : null}
           </div>
-          <ul className="flex max-h-[340px] flex-col gap-1.5 overflow-y-auto">
+          <ul className="flex max-h-[340px] min-h-0 flex-col gap-1.5 overflow-y-auto md:max-h-none md:flex-1">
             {!hasData ? (
               <li className="px-3 py-6 text-center text-sm text-white/50">No purchases with a location in this period yet.</li>
             ) : !focus && mode === "states" ? (
@@ -412,6 +508,7 @@ export function SpendingMap({ data, action, listSize = 6 }: { data: LocationsRes
               </li>
             ) : null}
           </ul>
+          {hasData ? <MapSummary data={data} focus={focus} /> : null}
         </div>
 
         {/* Map */}
@@ -440,23 +537,8 @@ export function SpendingMap({ data, action, listSize = 6 }: { data: LocationsRes
               </radialGradient>
             </defs>
             {dots.map((d, i) => {
-              const r = regionTotals.get(d.state);
-              const t = r ? Math.sqrt(r.total / maxRegion) : 0;
-              let opacity = r ? 0.3 + t * 0.7 : 1;
-              if (r && mode === "cities" && !focus) opacity = 0.16 + t * 0.3;
-              if (focus && d.state !== focus) opacity *= 0.35;
-              const hovered = d.state === hoverState;
-              return (
-                <circle
-                  key={i}
-                  cx={d.x}
-                  cy={d.y}
-                  r={radius}
-                  data-state={d.state}
-                  fill={hovered ? (r ? "#A8C4FF" : "#3A3A44") : r ? "#5B91FF" : BASE_DOT}
-                  fillOpacity={hovered ? 1 : opacity}
-                />
-              );
+              const { fill, opacity } = dotStyle(d.state, d.x, d.y);
+              return <circle key={i} cx={d.x} cy={d.y} r={radius} data-state={d.state} fill={fill} fillOpacity={opacity} />;
             })}
             {showMarkers
               ? visibleMarkers.map((m) => {
