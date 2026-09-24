@@ -6,7 +6,7 @@ import { cx, Segmented } from "@/components/ui";
 import type { LocationsResponse } from "@/lib/client/types";
 import { money, moneyWhole } from "@/lib/format";
 import { heatAt, heatWeights, type HeatSource } from "@/lib/geo/heat";
-import { MAP_HEIGHT, MAP_WIDTH, mapDots, placePoint, stateBox, stateCenter, stateName } from "@/lib/geo/us";
+import { MAP_HEIGHT, MAP_WIDTH, mapDots, placePoint, stateAt, stateBox, stateCenter, stateName } from "@/lib/geo/us";
 import { boxOf, clampView, fitBox, fullView, lerpView, zoomAt, zoomOf, type Bounds, type View } from "@/lib/geo/viewport";
 import { useWidth } from "./useWidth";
 
@@ -25,7 +25,7 @@ const ASPECT = MAP_WIDTH / MAP_HEIGHT;
 
 type Mode = "states" | "cities";
 type Target = { kind: "state" | "place"; key: string };
-type Hover = (Target & { x: number; y: number }) | null;
+type Hover = Target | null;
 type Gesture = {
   startView: View;
   startX: number;
@@ -262,11 +262,17 @@ export function SpendingMap({ data, action, listSize = 6 }: { data: LocationsRes
   function onPointerMove(e: React.PointerEvent<SVGSVGElement>) {
     const g = gesture.current;
     if (!pointers.current.has(e.pointerId) || !g) {
-      // Plain hover (mouse): show a tooltip for the state or city under the cursor.
+      // Plain hover (mouse). Cities come from the marker under the cursor;
+      // states from the map position, so gaps between dots don't flicker.
       if (e.pointerType !== "mouse") return;
-      const t = targetOf(e.target);
-      const rect = e.currentTarget.getBoundingClientRect();
-      setHover(t ? { ...t, x: e.clientX - rect.left, y: e.clientY - rect.top } : null);
+      const place = targetOf(e.target);
+      let next: Hover = place?.kind === "place" ? place : null;
+      if (!next) {
+        const [mx, my] = toMap(e.clientX, e.clientY);
+        const state = stateAt(mx, my);
+        next = state ? { kind: "state", key: state } : null;
+      }
+      setHover((prev) => (prev?.kind === next?.kind && prev?.key === next?.key ? prev : next));
       return;
     }
     pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
@@ -376,7 +382,7 @@ export function SpendingMap({ data, action, listSize = 6 }: { data: LocationsRes
     // Reserve the control column (top right) and zoom readout (bottom left).
     const placed: { l: number; t: number; r: number; b: number }[] = [
       { l: width - 52, t: 0, r: width, b: 176 },
-      { l: 0, t: height - 30, r: 56, b: height },
+      { l: 0, t: height - 36, r: Math.min(width, 340), b: height },
     ];
     for (const c of candidates) {
       if (chips.length >= limit) break;
@@ -543,7 +549,7 @@ export function SpendingMap({ data, action, listSize = 6 }: { data: LocationsRes
             {showMarkers
               ? visibleMarkers.map((m) => {
                   const [x, y] = m.xy!;
-                  const active = m.key === selected || (hover?.kind === "place" && hover.key === m.key);
+                  const active = m.key === selected;
                   return (
                     <g key={m.key} data-place={m.key}>
                       <circle cx={x} cy={y} r={(10 + m.weight * 18) * unit} fill={`url(#${glowId})`} />
@@ -571,14 +577,20 @@ export function SpendingMap({ data, action, listSize = 6 }: { data: LocationsRes
             </div>
           ))}
 
-          {tooltip && hover ? (
-            <div
-              className="pointer-events-none absolute z-10 rounded-xl bg-white/95 px-3 py-2 text-xs whitespace-nowrap text-ink shadow-xl"
-              style={{ left: Math.min(hover.x + 14, Math.max(0, width - 260)), top: Math.max(hover.y - 40, 4) }}
+          <div className="pointer-events-none absolute bottom-2 left-2 z-10 flex max-w-[calc(100%-56px)] items-center gap-1.5">
+            <span className="shrink-0 rounded-full bg-ink/70 px-2 py-1 text-[11px] text-white/60 backdrop-blur [font-variant-numeric:tabular-nums]">
+              {zoom.toFixed(1)}×
+            </span>
+            <span
+              aria-live="polite"
+              className={cx(
+                "truncate rounded-full border border-white/10 bg-ink/80 px-3 py-1 text-xs text-white backdrop-blur transition-opacity duration-150",
+                tooltip ? "opacity-100" : "opacity-0",
+              )}
             >
-              <span className="tabular">{tooltip}</span>
-            </div>
-          ) : null}
+              <span className="tabular">{tooltip ?? " "}</span>
+            </span>
+          </div>
 
           {/* Controls */}
           <div className="absolute top-2 right-2 flex flex-col gap-1.5">
@@ -595,7 +607,6 @@ export function SpendingMap({ data, action, listSize = 6 }: { data: LocationsRes
               <RotateCcw />
             </MapButton>
           </div>
-          <span className="pointer-events-none absolute bottom-2 left-3 rounded-full bg-ink/60 px-2 py-0.5 text-[11px] text-white/60 [font-variant-numeric:tabular-nums]">{zoom.toFixed(1)}×</span>
         </div>
       </div>
       <p className="mt-3 text-xs text-white/40">Drag to pan · pinch, double-click, or Ctrl/⌘ + scroll to zoom · click a state to see its cities</p>

@@ -150,3 +150,11 @@ export function stateCenter(code: string): [number, number] | null {
   const c = STATE_CENTROIDS[code];
   return c ? project(c[0], c[1]) : null;
 }
+
+/**
+ * State under a map point, using the same rule that colors the dots (inside
+ * the outline, nearest state center), so the gaps between dots count too.
+ */
+export function stateAt(x: number, y: number): string | null {
+  return inside([x, y]) ? nearestState([x, y]) : null;
+}
