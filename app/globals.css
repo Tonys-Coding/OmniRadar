@@ -1,0 +1,70 @@
+@import "tailwindcss";
+
+/* OmniRadar design tokens (brand: #5B91FF blue, #121214 ink, #FFFFFF). */
+@theme {
+  --font-sans: var(--font-outfit), ui-sans-serif, system-ui, sans-serif;
+
+  --color-ink: #121214;
+  --color-ink-2: #1c1c20;
+  --color-ink-3: #2a2a30;
+  --color-brand: #5b91ff;
+  --color-brand-soft: #a8c4ff;
+  --color-brand-pale: #e8efff;
+  --color-slate: #6e7a96;
+  --color-navy: #2f58c9;
+  --color-canvas: #ffffff;
+  --color-surface: #f4f4f6;
+  --color-line: #ebebef;
+  --color-muted: #8b8b94;
+  --color-faint: #b9b9c0;
+  --color-danger: #e5484d;
+  --color-success: #2fb57c;
+
+  --radius-card: 28px;
+  --radius-canvas: 36px;
+
+  --animate-fade-up: fade-up 0.35s ease-out both;
+  @keyframes fade-up {
+    from {
+      opacity: 0;
+      transform: translateY(6px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+}
+
+@layer base {
+  html {
+    -webkit-tap-highlight-color: transparent;
+  }
+  body {
+    @apply bg-ink text-ink antialiased;
+    font-feature-settings: "tnum" 0;
+  }
+  /* Tabular figures wherever we show money so columns line up. */
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+  :focus-visible {
+    outline: 2px solid var(--color-brand);
+    outline-offset: 2px;
+  }
+}
+
+@utility card {
+  @apply rounded-[var(--radius-card)] border border-line bg-canvas;
+}
+
+@utility card-dark {
+  @apply rounded-[var(--radius-card)] bg-ink text-white;
+}
+
+@utility no-scrollbar {
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
