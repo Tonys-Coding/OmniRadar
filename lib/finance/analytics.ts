@@ -40,10 +40,10 @@ export function dailyTotals(txns: CashflowTxn[], from: string, to: string, incom
   return [...days.values()].map((d) => ({ ...d, spending: round2(d.spending), income: round2(d.income) }));
 }
 
-/** Monday of the week containing `iso`. */
-export function startOfWeek(iso: string): string {
+/** First day (Monday by default, or Sunday) of the week containing `iso`. */
+export function startOfWeek(iso: string, weekStart: "monday" | "sunday" = "monday"): string {
   const dow = parseDate(iso).getUTCDay(); // 0 = Sunday
-  return addDays(iso, -((dow + 6) % 7));
+  return addDays(iso, weekStart === "sunday" ? -dow : -((dow + 6) % 7));
 }
 
 export type MerchantTotal = { merchant: string; logo_url: string | null; total: number; count: number; category: string | null };

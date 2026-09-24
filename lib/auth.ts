@@ -1,5 +1,7 @@
 import "server-only";
+import type { User } from "@supabase/supabase-js";
 import { errorResponse, HttpError } from "@/lib/http";
+import { parseSettings, type Profile, type Settings } from "@/lib/settings";
 import { createCookieClient, createTokenClient, type UserClient } from "@/lib/supabase/server";
 
 export type AuthContext = {
@@ -7,7 +9,21 @@ export type AuthContext = {
   email: string | undefined;
   /** Acts as the user; row level security applies. */
   supabase: UserClient;
+  user: User;
+  /** Preferences from user metadata, with defaults filled in. */
+  settings: Settings;
 };
+
+export function profileOf(user: User): Profile {
+  const meta = (user.user_metadata ?? {}) as { display_name?: unknown };
+  return {
+    id: user.id,
+    email: user.email ?? "",
+    display_name: typeof meta.display_name === "string" ? meta.display_name : "",
+    created_at: user.created_at,
+    last_sign_in_at: user.last_sign_in_at ?? null,
+  };
+}
 
 function bearerToken(request: Request) {
   const header = request.headers.get("authorization");
@@ -25,7 +41,13 @@ export async function getAuth(request: Request): Promise<AuthContext | null> {
   const supabase = token ? createTokenClient(token) : await createCookieClient();
   const { data, error } = token ? await supabase.auth.getUser(token) : await supabase.auth.getUser();
   if (error || !data.user) return null;
-  return { userId: data.user.id, email: data.user.email, supabase };
+  return {
+    userId: data.user.id,
+    email: data.user.email,
+    supabase,
+    user: data.user,
+    settings: parseSettings(data.user.user_metadata?.settings),
+  };
 }
 
 type RouteContext<P> = { params: Promise<P> };

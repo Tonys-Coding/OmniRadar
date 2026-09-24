@@ -47,6 +47,11 @@ describe("startOfWeek", () => {
     expect(startOfWeek("2026-09-21")).toBe("2026-09-21"); // Monday
     expect(startOfWeek("2026-09-27")).toBe("2026-09-21"); // Sunday
   });
+
+  it("can start weeks on Sunday", () => {
+    expect(startOfWeek("2026-09-24", "sunday")).toBe("2026-09-20");
+    expect(startOfWeek("2026-09-27", "sunday")).toBe("2026-09-27");
+  });
 });
 
 describe("topMerchants", () => {

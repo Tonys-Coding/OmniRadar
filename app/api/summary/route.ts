@@ -16,7 +16,7 @@ export const GET = withAuth(async (request, auth) => {
   const now = today();
   const thisMonth = startOfMonth(now);
   const firstMonth = addMonths(thisMonth, -(months - 1));
-  const weekStart = startOfWeek(now);
+  const weekStart = startOfWeek(now, auth.settings.week_start);
   const monthKeys = Array.from({ length: months }, (_, i) => addMonths(firstMonth, i).slice(0, 7));
 
   const [accounts, streams, incomeIds, items] = await Promise.all([
@@ -58,6 +58,7 @@ export const GET = withAuth(async (request, auth) => {
     as_of: now,
     balances: { cash: round2(cash), available: round2(available) },
     net_worth: netWorth(accounts),
+    budget: auth.settings.monthly_budget,
     today: {
       date: now,
       spending: todayTotals.spending,
