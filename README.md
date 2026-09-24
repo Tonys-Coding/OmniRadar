@@ -5,7 +5,7 @@ bills, income, and savings in one place, in the spirit of Rocket Money.
 
 - **Bank data**: [Plaid](https://plaid.com) (Trial plan: 10 live connections, free)
 - **Database + auth**: [Supabase](https://supabase.com) (Postgres with row level security)
-- **App**: Next.js 16 (App Router, TypeScript). Backend first; UI comes later.
+- **App**: Next.js 16 (App Router, TypeScript), Tailwind CSS, custom SVG charts
 
 ## Status
 
@@ -104,11 +104,15 @@ Amounts follow Plaid: **positive = money out, negative = money in.**
 | PATCH | `/api/recurring/:id` | `{kind_override, is_ignored}` to fix a misclassification |
 | GET | `/api/subscriptions` | Active subscriptions with monthly/yearly totals |
 | GET | `/api/bills?days=30` | Bills and subscriptions due soon |
-| GET | `/api/net-worth?days=90` | Current net worth and daily history |
+| GET | `/api/net-worth?range=3M` | Net worth now, plus daily cash and net-worth history (`1W 1M 3M 6M 1Y ALL`) |
+| GET | `/api/spending/daily?days=84` | Spending and income per day (heatmap) |
+| GET | `/api/spending/breakdown?month=YYYY-MM` | A month's categories vs last month, top merchants, running total |
+| GET | `/api/spending/locations?days=90` | Spending by city and state, plus online |
 | POST | `/api/plaid/webhook` | Plaid webhooks (signature-verified) |
 | POST | `/api/plaid/update-webhooks` | Point existing connections at `PLAID_WEBHOOK_URL` |
 | GET | `/api/cron/sync` | Sync everything; needs `Authorization: Bearer <CRON_SECRET>` |
 | POST | `/api/dev/sandbox-link` | Sandbox only: link a fake bank without the UI |
+| GET | `/api/dev/session` | Dev server only: one-time browser sign-in from `npm run dev-token` |
 
 ### How income and spending are counted
 
@@ -122,7 +126,7 @@ Amounts follow Plaid: **positive = money out, negative = money in.**
 
 ## Keeping data fresh
 
-- **Manual**: `POST /api/sync` (the UI will call this on open).
+- **Manual**: the **Sync** button on the dashboard or a bank's card (`POST /api/sync`).
 - **Scheduled**: call `GET /api/cron/sync` with the `CRON_SECRET` bearer token (for example,
   from Vercel Cron once deployed).
 - **Webhooks** (optional, needs a public HTTPS URL): set `PLAID_WEBHOOK_URL` to
@@ -142,7 +146,7 @@ Amounts follow Plaid: **positive = money out, negative = money in.**
 
 ## Security notes
 
-- `.env.local` and `.dev-token` are gitignored. Never commit them.
+- `.env.local`, `.dev-token`, and `.dev-session` are gitignored. Never commit them.
 - Plaid access tokens are encrypted (AES-256-GCM, bound to their connection) before being
   stored, and the table holding them is unreadable from the browser.
 - Every table has row level security; the browser can only edit a few whitelisted columns.
