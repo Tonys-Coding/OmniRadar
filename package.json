@@ -14,7 +14,8 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "verify": "tsx --conditions=react-server --env-file-if-exists=.env.local scripts/verify-setup.ts"
+    "verify": "tsx --conditions=react-server --env-file-if-exists=.env.local scripts/verify-setup.ts",
+    "dev-token": "tsx --conditions=react-server --env-file-if-exists=.env.local scripts/dev-token.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.7",

@@ -2,6 +2,7 @@ import "server-only";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { EnvError } from "@/lib/env";
+import { plaidError } from "@/lib/plaid";
 
 /** An error whose message is safe to show the caller. */
 export class HttpError extends Error {
@@ -29,6 +30,14 @@ export function errorResponse(error: unknown) {
   }
   if (error instanceof z.ZodError) {
     return json({ error: "Invalid request", details: z.flattenError(error) }, { status: 400 });
+  }
+  const plaid = plaidError(error);
+  if (plaid) {
+    console.error("[api] plaid error:", plaid);
+    return json(
+      { error: plaid.display_message ?? plaid.error_message ?? "Bank data provider error", plaid_error_code: plaid.error_code },
+      { status: 502 },
+    );
   }
   if (error instanceof EnvError) {
     console.error(error.message);
