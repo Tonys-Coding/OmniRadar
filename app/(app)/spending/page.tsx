@@ -10,6 +10,7 @@ import { PageHeader } from "@/components/shell/PageHeader";
 import { BigMoney, Card, CardHeader, cx, EmptyState, IconChip, Logo, Pill, Segmented, Skeleton } from "@/components/ui";
 import { categoryLabel, colorAt } from "@/lib/categories-ui";
 import { useApi } from "@/lib/client/api";
+import { useSettings } from "@/lib/client/settings";
 import type { BreakdownResponse, DailyResponse, LocationsResponse } from "@/lib/client/types";
 import { addMonths } from "@/lib/dates";
 import { money, monthLabel, percent, signedPercent, tidyName } from "@/lib/format";
@@ -20,6 +21,8 @@ function currentMonth() {
 }
 
 export default function SpendingPage() {
+  const { settings } = useSettings();
+  const budget = settings.monthly_budget;
   const [month, setMonth] = useState(currentMonth);
   const [mapDays, setMapDays] = useState<"30" | "90" | "365">("90");
   const { data, isLoading } = useApi<BreakdownResponse>(`/api/spending/breakdown?month=${month}`);
@@ -71,7 +74,15 @@ export default function SpendingPage() {
             icon: <TrendingUp />,
             title: isCurrent ? "Projected month" : "Last month",
             value: projected ?? data?.previous_total ?? 0,
-            badge: isCurrent ? <Pill tone="light">at this pace</Pill> : null,
+            badge: isCurrent ? (
+              budget ? (
+                <Pill tone={(projected ?? 0) > budget ? "danger" : "brand"}>
+                  {(projected ?? 0) > budget ? `${money((projected ?? 0) - budget)} over budget` : "within budget"}
+                </Pill>
+              ) : (
+                <Pill tone="light">at this pace</Pill>
+              )
+            ) : null,
           },
         ].map((c) => (
           <Card key={c.title} className="flex flex-col gap-6 xl:col-span-4">
@@ -180,7 +191,7 @@ export default function SpendingPage() {
 
         <Card className="md:col-span-3 xl:col-span-5">
           <CardHeader title="Spending activity" action={<Pill>26 weeks</Pill>} />
-          <div className="mt-4">{daily ? <Heatmap days={daily.days} /> : <Skeleton className="h-48 w-full" />}</div>
+          <div className="mt-4">{daily ? <Heatmap days={daily.days} weekStart={settings.week_start} /> : <Skeleton className="h-48 w-full" />}</div>
           {daily ? (
             <p className="mt-4 text-sm text-muted">
               {money(daily.stats.total)} over {daily.stats.active_days} days with spending · biggest day {money(daily.stats.max)}

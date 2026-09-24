@@ -1,24 +1,30 @@
 "use client";
 
-import { Bell, CalendarClock, LogOut, Search, TriangleAlert } from "lucide-react";
+import { Bell, CalendarClock, Eye, EyeOff, LogOut, Receipt, Search, Settings, Target, TriangleAlert, Wallet, X } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { cx, Switch } from "@/components/ui";
+import type { Alert } from "@/lib/alerts";
 import { useApi } from "@/lib/client/api";
-import type { BillsResponse, ItemsResponse } from "@/lib/client/types";
-import { dueLabel, initials, money, tidyName } from "@/lib/format";
-import { cx } from "@/components/ui";
-import { signOut, useUser } from "./AppShell";
+import { nameOf, useSettings } from "@/lib/client/settings";
+import type { ItemsResponse } from "@/lib/client/types";
+import { initials, timeAgo } from "@/lib/format";
+import { signOut } from "./AppShell";
 import { BrandMark } from "./BrandMark";
 
-function useClickOutside(ref: React.RefObject<HTMLElement | null>, onOutside: () => void) {
+function useDismiss(ref: React.RefObject<HTMLElement | null>, open: boolean, close: () => void) {
   useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) onOutside();
+    if (!open) return;
+    const onDown = (e: MouseEvent) => ref.current && !ref.current.contains(e.target as Node) && close();
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && close();
+    document.addEventListener("mousedown", onDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDown);
+      document.removeEventListener("keydown", onKey);
     };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, [ref, onOutside]);
+  }, [ref, open, close]);
 }
 
 function SearchBox({ className }: { className?: string }) {
@@ -45,93 +51,209 @@ function SearchBox({ className }: { className?: string }) {
   );
 }
 
+const SEEN_KEY = "omniradar.seenAlerts";
+function readSeen(): string[] {
+  try {
+    return JSON.parse(localStorage.getItem(SEEN_KEY) ?? "[]") as string[];
+  } catch {
+    return [];
+  }
+}
+
+const ALERT_ICON = {
+  connection: TriangleAlert,
+  low_balance: Wallet,
+  large_transaction: Receipt,
+  bill_due: CalendarClock,
+  budget: Target,
+} as const;
+
 function Notifications() {
   const [open, setOpen] = useState(false);
+  const [seen, setSeen] = useState<string[]>([]);
   const ref = useRef<HTMLDivElement>(null);
-  useClickOutside(ref, () => setOpen(false));
-  const { data: bills } = useApi<BillsResponse>("/api/bills?days=3");
-  const { data: items } = useApi<ItemsResponse>("/api/items");
-  const broken = items?.items.filter((i) => i.status !== "good") ?? [];
-  const due = bills?.bills ?? [];
-  const count = broken.length + due.length;
+  const close = useCallback(() => setOpen(false), []);
+  useDismiss(ref, open, close);
+  const { data } = useApi<{ alerts: Alert[] }>("/api/alerts", { refreshInterval: 5 * 60_000 });
+  const alerts = data?.alerts ?? [];
+  const unread = alerts.filter((a) => !seen.includes(a.id));
+
+  // Seen ids are a per-browser convenience; read after mount.
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time read of browser storage
+    setSeen(readSeen());
+  }, []);
+
+  function markAllRead() {
+    const ids = alerts.map((a) => a.id);
+    setSeen(ids);
+    try {
+      localStorage.setItem(SEEN_KEY, JSON.stringify(ids));
+    } catch {
+      // storage unavailable: unread dot just comes back next visit
+    }
+  }
 
   return (
     <div ref={ref} className="relative">
       <button
         onClick={() => setOpen((o) => !o)}
-        aria-label={`Notifications${count ? ` (${count})` : ""}`}
+        aria-label={`Notifications${unread.length ? ` (${unread.length} unread)` : ""}`}
         aria-expanded={open}
         className="relative grid size-11 place-items-center rounded-full bg-surface transition-colors hover:bg-line"
       >
         <Bell className="size-[19px]" strokeWidth={1.8} />
-        {count > 0 ? <span className="absolute top-2.5 right-2.5 size-2 rounded-full bg-brand ring-2 ring-surface" /> : null}
+        {unread.length > 0 ? (
+          <span className="absolute -top-0.5 -right-0.5 grid min-w-5 place-items-center rounded-full bg-brand px-1 text-[10px] font-medium text-white ring-2 ring-canvas">
+            {unread.length}
+          </span>
+        ) : null}
       </button>
       {open ? (
-        <div className="absolute right-0 z-50 mt-2 w-80 max-w-[calc(100vw-24px)] animate-fade-up rounded-3xl border border-line bg-canvas p-2 shadow-xl shadow-black/10">
-          <p className="px-3 pt-2 pb-1 text-sm font-medium">Notifications</p>
-          {count === 0 ? <p className="px-3 py-4 text-sm text-muted">You&apos;re all caught up.</p> : null}
-          {broken.map((i) => (
-            <Link
-              key={i.id}
-              href="/accounts"
-              onClick={() => setOpen(false)}
-              className="flex items-start gap-3 rounded-2xl px-3 py-2.5 hover:bg-surface"
-            >
-              <TriangleAlert className="mt-0.5 size-4 shrink-0 text-danger" />
-              <span className="text-sm">
-                <span className="font-medium">{i.institution_name ?? "A bank"}</span> needs to be reconnected
-              </span>
-            </Link>
-          ))}
-          {due.map((b) => (
-            <Link
-              key={b.id}
-              href="/bills"
-              onClick={() => setOpen(false)}
-              className="flex items-start gap-3 rounded-2xl px-3 py-2.5 hover:bg-surface"
-            >
-              <CalendarClock className="mt-0.5 size-4 shrink-0 text-brand" />
-              <span className="flex-1 text-sm">
-                <span className="font-medium">{tidyName(b.merchant_name ?? b.description)}</span>{" "}
-                <span className="text-muted">{dueLabel(b.predicted_next_date!).toLowerCase()}</span>
-              </span>
-              <span className="text-sm font-medium tabular">{money(b.expected_amount)}</span>
-            </Link>
-          ))}
+        <div className="absolute right-0 z-50 mt-2 w-[340px] max-w-[calc(100vw-24px)] animate-fade-up rounded-3xl border border-line bg-canvas p-2 shadow-xl shadow-black/10">
+          <div className="flex items-center justify-between px-3 pt-2 pb-1">
+            <p className="text-sm font-medium">Notifications</p>
+            {unread.length ? (
+              <button onClick={markAllRead} className="text-xs text-muted hover:text-ink">
+                Mark all read
+              </button>
+            ) : null}
+          </div>
+          {alerts.length === 0 ? <p className="px-3 py-5 text-sm text-muted">You&apos;re all caught up.</p> : null}
+          <div className="max-h-[60dvh] overflow-y-auto">
+            {alerts.map((a) => {
+              const Icon = ALERT_ICON[a.kind];
+              return (
+                <Link key={a.id} href={a.href} onClick={close} className="flex items-start gap-3 rounded-2xl px-3 py-2.5 hover:bg-surface">
+                  <span
+                    className={cx(
+                      "mt-0.5 grid size-8 shrink-0 place-items-center rounded-full",
+                      a.severity === "critical" ? "bg-danger/10 text-danger" : a.severity === "warning" ? "bg-ink text-white" : "bg-brand-pale text-navy",
+                    )}
+                  >
+                    <Icon className="size-4" />
+                  </span>
+                  <span className="min-w-0 flex-1 text-sm">
+                    <span className="flex items-center gap-1.5 font-medium">
+                      {a.title}
+                      {!seen.includes(a.id) ? <span className="size-1.5 shrink-0 rounded-full bg-brand" /> : null}
+                    </span>
+                    <span className="block text-muted">{a.body}</span>
+                  </span>
+                </Link>
+              );
+            })}
+          </div>
+          <Link href="/settings#alerts" onClick={close} className="mt-1 block rounded-2xl px-3 py-2 text-center text-xs text-muted hover:bg-surface hover:text-ink">
+            Alert settings
+          </Link>
         </div>
       ) : null}
     </div>
   );
 }
 
-function Avatar() {
-  const { email } = useUser();
+function PrivacyToggle() {
+  const { settings, update } = useSettings();
+  const on = settings.privacy_mode;
+  return (
+    <button
+      onClick={() => update({ privacy_mode: !on })}
+      aria-label={on ? "Show amounts" : "Hide amounts"}
+      aria-pressed={on}
+      title={on ? "Privacy mode on: amounts hidden" : "Hide amounts"}
+      className={cx("hidden size-11 place-items-center rounded-full transition-colors sm:grid", on ? "bg-ink text-white" : "bg-surface hover:bg-line")}
+    >
+      {on ? <EyeOff className="size-[19px]" strokeWidth={1.8} /> : <Eye className="size-[19px]" strokeWidth={1.8} />}
+    </button>
+  );
+}
+
+export function Avatar({ size = 44, className }: { size?: number; className?: string }) {
+  const { profile } = useSettings();
+  return (
+    <span
+      style={{ width: size, height: size, fontSize: size * 0.34 }}
+      className={cx("grid shrink-0 place-items-center rounded-full bg-gradient-to-br from-brand to-navy font-medium text-white", className)}
+    >
+      {initials(nameOf(profile))}
+    </span>
+  );
+}
+
+/** Quick profile modal: who you are, privacy switch, link to full settings. */
+function ProfileMenu() {
+  const { profile, settings, update } = useSettings();
+  const { data: items } = useApi<ItemsResponse>("/api/items");
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
-  useClickOutside(ref, () => setOpen(false));
+  const close = useCallback(() => setOpen(false), []);
+  useDismiss(ref, open, close);
+  const banks = items?.items ?? [];
+  const lastSync = banks.map((i) => i.last_synced_at).filter(Boolean).sort().at(-1) ?? null;
+
   return (
     <div ref={ref} className="relative">
-      <button
-        onClick={() => setOpen((o) => !o)}
-        aria-label="Account menu"
-        aria-expanded={open}
-        className="grid size-11 place-items-center rounded-full bg-gradient-to-br from-brand to-navy text-sm font-medium text-white"
-      >
-        {initials(email.split("@")[0] ?? "")}
+      <button onClick={() => setOpen((o) => !o)} aria-label="Profile" aria-expanded={open} aria-haspopup="dialog" className="rounded-full">
+        <Avatar />
       </button>
       {open ? (
-        <div className="absolute right-0 z-50 mt-2 w-64 animate-fade-up rounded-3xl border border-line bg-canvas p-2 shadow-xl shadow-black/10">
-          <p className="truncate px-3 pt-2 pb-2 text-sm text-muted">{email}</p>
-          <button onClick={signOut} className="flex w-full items-center gap-2.5 rounded-2xl px-3 py-2.5 text-sm hover:bg-surface">
-            <LogOut className="size-4" /> Sign out
-          </button>
+        <div
+          role="dialog"
+          aria-label="Profile"
+          className="absolute right-0 z-50 mt-2 w-[320px] max-w-[calc(100vw-24px)] animate-fade-up overflow-hidden rounded-[28px] border border-line bg-canvas shadow-2xl shadow-black/15"
+        >
+          <div className="relative bg-ink p-5 text-white">
+            <div className="pointer-events-none absolute -top-16 -right-10 size-44 rounded-full bg-brand/40 blur-3xl" />
+            <button onClick={close} aria-label="Close" className="absolute top-3 right-3 grid size-8 place-items-center rounded-full text-white/60 hover:bg-white/10 hover:text-white">
+              <X className="size-4" />
+            </button>
+            <div className="relative flex items-center gap-3.5">
+              <Avatar size={52} />
+              <div className="min-w-0">
+                <p className="truncate text-lg font-medium">{nameOf(profile)}</p>
+                <p className="truncate text-sm text-white/55">{profile.email}</p>
+              </div>
+            </div>
+            <div className="relative mt-4 grid grid-cols-2 gap-2 text-xs">
+              <div className="rounded-2xl bg-white/8 px-3 py-2">
+                <p className="text-white/50">Banks</p>
+                <p className="mt-0.5 text-sm font-medium">{banks.length} connected</p>
+              </div>
+              <div className="rounded-2xl bg-white/8 px-3 py-2">
+                <p className="text-white/50">Last sync</p>
+                <p className="mt-0.5 text-sm font-medium">{timeAgo(lastSync)}</p>
+              </div>
+            </div>
+          </div>
+          <div className="p-2">
+            <label className="flex cursor-pointer items-center justify-between rounded-2xl px-3 py-3 hover:bg-surface">
+              <span className="flex items-center gap-3 text-sm">
+                <EyeOff className="size-4 text-muted" /> Hide amounts
+              </span>
+              <Switch checked={settings.privacy_mode} onChange={(v) => update({ privacy_mode: v })} label="Hide amounts" />
+            </label>
+            <Link
+              href="/settings"
+              onClick={close}
+              className="mt-1 flex h-12 items-center justify-center gap-2 rounded-full bg-ink text-[15px] font-medium text-white hover:bg-ink-3"
+            >
+              <Settings className="size-4" /> Account settings
+            </Link>
+            <button
+              onClick={() => signOut()}
+              className="mt-1 flex h-11 w-full items-center justify-center gap-2 rounded-full text-sm text-muted hover:bg-surface hover:text-ink"
+            >
+              <LogOut className="size-4" /> Sign out
+            </button>
+          </div>
         </div>
       ) : null}
     </div>
   );
 }
 
-/** Page title row with global search, notifications, and account menu. */
+/** Page title row with global search, notifications, and the profile menu. */
 export function PageHeader({
   title,
   subtitle,
@@ -146,15 +268,16 @@ export function PageHeader({
 }) {
   return (
     <header className="px-4 pt-[max(16px,env(safe-area-inset-top))] sm:px-6 lg:px-8 lg:pt-7">
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-2.5 sm:gap-3">
         <BrandMark className="size-9 lg:hidden" />
         <div className="min-w-0 flex-1">
           <h1 className="truncate text-[26px] leading-tight font-medium tracking-tight sm:text-[34px]">{title}</h1>
-          {subtitle ? <p className="mt-0.5 text-sm text-muted">{subtitle}</p> : null}
+          {subtitle ? <p className="mt-0.5 truncate text-sm text-muted">{subtitle}</p> : null}
         </div>
-        {hideSearch ? null : <SearchBox className="hidden w-80 md:flex" />}
+        {hideSearch ? null : <SearchBox className="hidden w-72 md:flex xl:w-80" />}
+        <PrivacyToggle />
         <Notifications />
-        <Avatar />
+        <ProfileMenu />
       </div>
       {hideSearch ? null : <SearchBox className="mt-4 md:hidden" />}
       {children}

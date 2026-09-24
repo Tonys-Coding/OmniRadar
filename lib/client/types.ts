@@ -11,6 +11,7 @@ export type Summary = {
   as_of: string;
   balances: { cash: number; available: number };
   net_worth: NetWorth;
+  budget: number | null;
   today: { date: string; spending: number; income: number; count: number; average_daily_spending: number };
   this_week: { start: string; income: number; spending: number; days: DayTotal[] };
   this_month: MonthCashflow & { spending_by_category: CategoryTotal[] };

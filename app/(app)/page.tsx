@@ -23,10 +23,11 @@ import type {
   Summary,
   TransactionsResponse,
 } from "@/lib/client/types";
+import { nameOf, useSettings } from "@/lib/client/settings";
 import { money, monthLabel, percent, shortDate, timeAgo } from "@/lib/format";
+import type { Range } from "@/lib/settings";
 
 const RANGES = ["1W", "1M", "3M", "6M", "1Y", "ALL"] as const;
-type Range = (typeof RANGES)[number];
 
 function StatCard({
   icon,
@@ -35,6 +36,7 @@ function StatCard({
   badge,
   sub,
   loading,
+  progress,
 }: {
   icon: React.ReactNode;
   title: string;
@@ -42,6 +44,8 @@ function StatCard({
   badge?: React.ReactNode;
   sub?: React.ReactNode;
   loading?: boolean;
+  /** 0..1+ share of a budget, drawn as a bar. */
+  progress?: number | null;
 }) {
   return (
     <Card className="flex flex-col justify-between gap-6 xl:col-span-3">
@@ -57,6 +61,11 @@ function StatCard({
             <BigMoney value={value} className="text-[34px] leading-none" />
             {badge}
           </div>
+          {progress !== undefined && progress !== null ? (
+            <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-surface" role="progressbar" aria-valuenow={Math.round(progress * 100)} aria-valuemin={0} aria-valuemax={100}>
+              <div className={cx("h-full rounded-full", progress > 1 ? "bg-danger" : progress > 0.85 ? "bg-ink" : "bg-brand")} style={{ width: `${Math.min(100, progress * 100)}%` }} />
+            </div>
+          ) : null}
           {sub ? <p className="mt-2 text-sm text-muted">{sub}</p> : null}
         </div>
       )}
@@ -65,7 +74,8 @@ function StatCard({
 }
 
 function BalanceHero() {
-  const [range, setRange] = useState<Range>("3M");
+  const { settings } = useSettings();
+  const [range, setRange] = useState<Range>(settings.default_range);
   const [metric, setMetric] = useState<"cash" | "net_worth">("cash");
   const { data, isLoading } = useApi<NetWorthResponse>(`/api/net-worth?range=${range}`);
   const series = (data?.series ?? []).map((p) => ({ x: p.date, y: p[metric] }));
@@ -157,7 +167,9 @@ function BalanceCard({ summary }: { summary?: Summary }) {
               {money(Math.abs(net))} this month
             </span>
           </div>
-          <p className="mt-1 text-sm text-muted">{money(summary.balances.available)} available to spend</p>
+          <p className="mt-1 text-sm text-muted">
+            <span className="tabular">{money(summary.balances.available)}</span> available to spend
+          </p>
 
           <p className="mt-7 mb-3 text-[15px]">Where it is</p>
           <AllocationBar values={cash.map((a) => Math.max(0, a.current_balance ?? 0))} />
@@ -271,6 +283,7 @@ function CategoryCard({ summary }: { summary?: Summary }) {
 }
 
 function ActivityCard() {
+  const { settings } = useSettings();
   const { data } = useApi<DailyResponse>("/api/spending/daily?days=84");
   return (
     <Card className="xl:col-span-4">
@@ -282,7 +295,7 @@ function ActivityCard() {
             <span className="text-muted">days with spending</span>
           </p>
           <div className="mt-2">
-            <Heatmap days={data.days} />
+            <Heatmap days={data.days} weekStart={settings.week_start} />
           </div>
         </>
       ) : (
@@ -407,8 +420,15 @@ function ConnectFirstBank() {
   );
 }
 
+function greeting() {
+  const h = new Date().getHours();
+  return h < 12 ? "Good morning" : h < 18 ? "Good afternoon" : "Good evening";
+}
+
 export default function DashboardPage() {
+  const { profile } = useSettings();
   const { data: summary, isLoading } = useApi<Summary>("/api/summary?months=6");
+  const budget = summary?.budget ?? null;
   const noBanks = summary && summary.connections.total === 0;
   const week = summary?.this_week;
   const month = summary?.this_month;
@@ -416,7 +436,7 @@ export default function DashboardPage() {
 
   return (
     <>
-      <PageHeader title="Dashboard" />
+      <PageHeader title="Dashboard" subtitle={`${greeting()}, ${nameOf(profile)}`} />
       <div className="mt-5 grid animate-fade-up grid-cols-1 gap-4 px-4 sm:px-6 md:grid-cols-2 lg:mt-7 lg:px-8 xl:grid-cols-12">
         {noBanks ? <ConnectFirstBank /> : null}
 
@@ -426,7 +446,13 @@ export default function DashboardPage() {
           title="Today's spending"
           value={summary?.today.spending ?? 0}
           badge={todayVsAvg !== null ? <Pill>{todayVsAvg >= 1 ? `${todayVsAvg.toFixed(1)}× avg` : `${percent(1 - todayVsAvg)} under avg`}</Pill> : null}
-          sub={summary ? `${summary.today.count} purchase${summary.today.count === 1 ? "" : "s"} · daily avg ${money(summary.today.average_daily_spending)}` : null}
+          sub={
+            summary ? (
+              <>
+                {summary.today.count} purchase{summary.today.count === 1 ? "" : "s"} · daily avg <span className="tabular">{money(summary.today.average_daily_spending)}</span>
+              </>
+            ) : null
+          }
         />
         <StatCard
           loading={isLoading}
@@ -441,8 +467,23 @@ export default function DashboardPage() {
           icon={<CalendarRange />}
           title="This month"
           value={month?.spending ?? 0}
-          badge={month?.savings_rate !== null && month ? <Pill>{month.savings_rate >= 0 ? `Saved ${percent(month.savings_rate)}` : "Overspent"}</Pill> : null}
-          sub={month ? `Spent of ${money(month.income)} income` : null}
+          progress={budget && month ? month.spending / budget : null}
+          badge={
+            budget && month ? (
+              <Pill tone={month.spending > budget ? "danger" : "dark"}>{percent(month.spending / budget)} of budget</Pill>
+            ) : month?.savings_rate !== null && month ? (
+              <Pill>{month.savings_rate >= 0 ? `Saved ${percent(month.savings_rate)}` : "Overspent"}</Pill>
+            ) : null
+          }
+          sub={
+            month
+              ? budget
+                ? month.spending > budget
+                  ? <><span className="tabular">{money(month.spending - budget)}</span> over your <span className="tabular">{money(budget)}</span> budget</>
+                  : <><span className="tabular">{money(budget - month.spending)}</span> left of <span className="tabular">{money(budget)}</span></>
+                : <>Spent of <span className="tabular">{money(month.income)}</span> income</>
+              : null
+          }
         />
 
         <BalanceCard summary={summary} />

@@ -8,7 +8,8 @@ import { money, relativeDay } from "@/lib/format";
 // gray = light day, blues = moderate, ink = heavy.
 
 const LEVELS = ["#EDEDF0", "#C9D8FF", "#5B91FF", "#121214"];
-const WEEKDAYS = ["M", "T", "W", "T", "F", "S", "S"];
+const WEEKDAYS_MON = ["M", "T", "W", "T", "F", "S", "S"];
+const WEEKDAYS_SUN = ["S", "M", "T", "W", "T", "F", "S"];
 
 function level(value: number, thresholds: number[]) {
   if (value <= 0) return 0;
@@ -17,13 +18,14 @@ function level(value: number, thresholds: number[]) {
   return 3;
 }
 
-export function Heatmap({ days }: { days: DayTotal[] }) {
+export function Heatmap({ days, weekStart = "monday" }: { days: DayTotal[]; weekStart?: "monday" | "sunday" }) {
+  const WEEKDAYS = weekStart === "sunday" ? WEEKDAYS_SUN : WEEKDAYS_MON;
   const [hover, setHover] = useState<DayTotal | null>(null);
 
   const { weeks, thresholds, months } = useMemo(() => {
-    // Pad the start so each column is Monday..Sunday.
+    // Pad the start so each column is one week (Mon..Sun or Sun..Sat).
     const first = days[0] ? new Date(`${days[0].date}T12:00:00`) : new Date();
-    const lead = (first.getDay() + 6) % 7;
+    const lead = weekStart === "sunday" ? first.getDay() : (first.getDay() + 6) % 7;
     const cells: (DayTotal | null)[] = [...Array<null>(lead).fill(null), ...days];
     const cols: (DayTotal | null)[][] = [];
     for (let i = 0; i < cells.length; i += 7) cols.push(cells.slice(i, i + 7));
@@ -39,7 +41,7 @@ export function Heatmap({ days }: { days: DayTotal[] }) {
       return month !== prevMonth ? month : "";
     });
     return { weeks: cols, thresholds: [q(0.4), q(0.8)], months: labels };
-  }, [days]);
+  }, [days, weekStart]);
 
   return (
     <div>

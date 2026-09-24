@@ -36,6 +36,7 @@ function LoginForm() {
 
   return (
     <form onSubmit={submit} className="flex flex-col gap-3">
+      {params.get("expired") ? <p className="rounded-2xl bg-surface px-4 py-3 text-sm text-muted">Your session ended. Please sign in again.</p> : null}
       <label className="sr-only" htmlFor="email">
         Email
       </label>

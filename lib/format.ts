@@ -9,8 +9,15 @@ const usdCompact = new Intl.NumberFormat("en-US", {
   maximumFractionDigits: 1,
 });
 
-/** $1,234.56 */
-export const money = (n: number | null | undefined) => usd.format(n ?? 0);
+// "Show cents" preference. Set by the settings provider in the browser only,
+// so server-rendered markup always uses the default.
+let showCents = true;
+export function setShowCents(value: boolean) {
+  if (typeof window !== "undefined") showCents = value;
+}
+
+/** $1,234.56 (or $1,235 when the user hides cents) */
+export const money = (n: number | null | undefined) => (showCents ? usd : usdWhole).format(n ?? 0);
 /** $1,235 */
 export const moneyWhole = (n: number | null | undefined) => usdWhole.format(n ?? 0);
 /** $1.2K */
@@ -18,6 +25,7 @@ export const moneyCompact = (n: number | null | undefined) => usdCompact.format(
 
 /** Split "$1,234.56" into ["$1,234", ".56"] for big-number styling. */
 export function moneyParts(n: number | null | undefined): [string, string] {
+  if (!showCents) return [usdWhole.format(n ?? 0), ""];
   const s = usd.format(n ?? 0);
   const dot = s.lastIndexOf(".");
   return dot === -1 ? [s, ""] : [s.slice(0, dot), s.slice(dot)];

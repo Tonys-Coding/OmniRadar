@@ -48,6 +48,15 @@
   .tabular {
     font-variant-numeric: tabular-nums;
   }
+  /* Privacy mode: blur every amount until hovered or tapped. */
+  .privacy .tabular {
+    filter: blur(7px);
+    transition: filter 0.15s ease;
+  }
+  .privacy .tabular:hover,
+  .privacy .tabular:active {
+    filter: none;
+  }
   :focus-visible {
     outline: 2px solid var(--color-brand);
     outline-offset: 2px;
