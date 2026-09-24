@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "engines": {
-    "node": ">=20"
+    "node": ">=22"
   },
   "scripts": {
     "dev": "next dev",
@@ -14,7 +14,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "verify": "tsx --env-file=.env.local scripts/verify-setup.ts"
+    "verify": "tsx --conditions=react-server --env-file-if-exists=.env.local scripts/verify-setup.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.7",
