@@ -20,6 +20,7 @@
   "dependencies": {
     "@supabase/ssr": "^0.12.7",
     "@supabase/supabase-js": "^2.117.1",
+    "jose": "^6.2.12",
     "next": "^16.3.6",
     "plaid": "^47.0.0",
     "react": "^19.3.0",
