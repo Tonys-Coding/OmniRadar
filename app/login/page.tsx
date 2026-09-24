@@ -3,7 +3,7 @@
 import { ArrowRight } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
-import { BrandMark } from "@/components/shell/BrandMark";
+import { Logo } from "@/components/brand/Logo";
 import { Button } from "@/components/ui";
 import { api } from "@/lib/client/api";
 
@@ -68,7 +68,7 @@ export default function LoginPage() {
       {/* soft brand glow */}
       <div className="pointer-events-none absolute -top-40 left-1/2 size-[640px] -translate-x-1/2 rounded-full bg-brand/25 blur-[120px]" />
       <div className="relative w-full max-w-md animate-fade-up rounded-[var(--radius-canvas)] bg-canvas p-8 sm:p-10">
-        <BrandMark className="size-14" />
+        <Logo className="text-[26px]" />
         <h1 className="mt-6 text-3xl font-medium tracking-tight">Welcome back</h1>
         <p className="mt-1.5 mb-8 text-muted">Sign in to see everything in one place.</p>
         <Suspense>

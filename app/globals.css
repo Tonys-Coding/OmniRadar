@@ -19,6 +19,9 @@
   --color-faint: #b9b9c0;
   --color-danger: #e5484d;
   --color-success: #2fb57c;
+  /* Logo colors (from the OmniRadar artwork). */
+  --color-logo-navy: #101f38;
+  --color-logo-teal: #6fd3d5;
 
   --radius-card: 28px;
   --radius-canvas: 36px;

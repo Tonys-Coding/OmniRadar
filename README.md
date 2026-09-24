@@ -1,3 +1,5 @@
+<p><img src="public/brand/omniradar-logo.svg" alt="OmniRadar" height="56"></p>
+
 # OmniRadar
 
 A personal finance visibility dashboard: balances, transactions, subscriptions,
@@ -152,6 +154,12 @@ Amounts follow Plaid: **positive = money out, negative = money in.**
 | `npm test` | Unit tests |
 | `npm run typecheck` | TypeScript check |
 | `npm run lint` | ESLint |
+
+## Brand
+
+Transparent logo files live in [`public/brand/`](public/brand/): the mark and the full logo as
+SVG (navy for light backgrounds, `-white` for dark) and PNG. The wordmark is Outfit SemiBold, the
+app's font. Regenerate them with `python3 scripts/brand/build_brand.py path/to/Outfit-SemiBold.ttf`.
 
 ## Security notes
 

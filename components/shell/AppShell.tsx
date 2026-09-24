@@ -4,11 +4,11 @@ import { LogOut, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
+import { Logo, LogoMark } from "@/components/brand/Logo";
 import { cx } from "@/components/ui";
 import { api } from "@/lib/client/api";
 import { SettingsProvider, useSettings } from "@/lib/client/settings";
 import type { Profile, Settings } from "@/lib/settings";
-import { BrandMark } from "./BrandMark";
 import { isActive, NAV, SETTINGS_NAV, SIDEBAR_COOKIE } from "./nav";
 
 export async function signOut(scope: "local" | "global" = "local") {
@@ -69,9 +69,8 @@ function Sidebar({ initialExpanded }: { initialExpanded: boolean }) {
       )}
     >
       <div className={cx("flex items-center", expanded ? "justify-between pl-1" : "flex-col gap-4")}>
-        <Link href="/" aria-label="OmniRadar home" className="flex items-center gap-3">
-          <BrandMark className="size-12 shrink-0" />
-          {expanded ? <span className="text-lg font-medium text-white">OmniRadar</span> : null}
+        <Link href="/" aria-label="OmniRadar home" className="flex items-center text-white">
+          {expanded ? <Logo tone="dark" className="text-[21px]" /> : <LogoMark title={null} className="size-11" />}
         </Link>
         <button
           onClick={toggle}

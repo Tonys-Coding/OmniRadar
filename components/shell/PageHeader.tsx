@@ -4,6 +4,7 @@ import { Bell, CalendarClock, Eye, EyeOff, LogOut, Receipt, Search, Settings, Ta
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { LogoMark } from "@/components/brand/Logo";
 import { cx, Switch } from "@/components/ui";
 import type { Alert } from "@/lib/alerts";
 import { useApi } from "@/lib/client/api";
@@ -11,7 +12,6 @@ import { nameOf, useSettings } from "@/lib/client/settings";
 import type { ItemsResponse } from "@/lib/client/types";
 import { initials, timeAgo } from "@/lib/format";
 import { signOut } from "./AppShell";
-import { BrandMark } from "./BrandMark";
 
 function useDismiss(ref: React.RefObject<HTMLElement | null>, open: boolean, close: () => void) {
   useEffect(() => {
@@ -269,7 +269,7 @@ export function PageHeader({
   return (
     <header className="px-4 pt-[max(16px,env(safe-area-inset-top))] sm:px-6 lg:px-8 lg:pt-7">
       <div className="flex items-center gap-2.5 sm:gap-3">
-        <BrandMark className="size-9 lg:hidden" />
+        <LogoMark className="size-9 text-logo-navy lg:hidden" />
         <div className="min-w-0 flex-1">
           <h1 className="truncate text-[26px] leading-tight font-medium tracking-tight sm:text-[34px]">{title}</h1>
           {subtitle ? <p className="mt-0.5 truncate text-sm text-muted">{subtitle}</p> : null}
