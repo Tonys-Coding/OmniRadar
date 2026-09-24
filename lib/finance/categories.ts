@@ -12,7 +12,6 @@ const CASHFLOW_EXCLUDED_DETAILED = new Set(["LOAN_PAYMENTS_CREDIT_CARD_PAYMENT"]
 /**
  * Whether a transaction is ignored by income/spending totals. Card payments are
  * excluded because the purchases on the card are already counted.
- * Mirrored in SQL by public.is_cashflow_excluded (keep the two in sync).
  */
 export function isCashflowExcluded(primary: string | null, detailed: string | null): boolean {
   return CASHFLOW_EXCLUDED_PRIMARY.has(primary ?? "") || CASHFLOW_EXCLUDED_DETAILED.has(detailed ?? "");

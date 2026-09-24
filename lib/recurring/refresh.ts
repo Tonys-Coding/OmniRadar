@@ -1,10 +1,11 @@
 import "server-only";
-import type { TransactionStream } from "plaid";
+import { PersonalFinanceCategoryVersion, type TransactionStream } from "plaid";
 import { today } from "@/lib/dates";
 import { classifyStream } from "@/lib/finance/categories";
 import { plaid, plaidError, RELINK_ERROR_CODES } from "@/lib/plaid";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import type { StreamDirection, StreamFrequency } from "@/lib/supabase/database.types";
+import { applyMajorityCategory, type TxnCategory } from "./categorize";
 import { detectRecurring, type DetectInput } from "./detect";
 import type { StreamInsert } from "./types";
 
@@ -81,6 +82,23 @@ async function loadTransactionsForDetection(accountIds: string[]): Promise<Detec
   }
 }
 
+async function loadTransactionCategories(plaidTransactionIds: string[]): Promise<Map<string, TxnCategory>> {
+  const db = supabaseAdmin();
+  const categories = new Map<string, TxnCategory>();
+  // Chunked to keep the request URL short.
+  for (let i = 0; i < plaidTransactionIds.length; i += 100) {
+    const { data, error } = await db
+      .from("transactions")
+      .select("plaid_transaction_id, category_primary, category_detailed")
+      .in("plaid_transaction_id", plaidTransactionIds.slice(i, i + 100));
+    if (error) throw error;
+    for (const t of data) {
+      categories.set(t.plaid_transaction_id, { primary: t.category_primary, detailed: t.category_detailed });
+    }
+  }
+  return categories;
+}
+
 export type RecurringResult = { source: "plaid" | "local"; streams: number; note?: string };
 
 /**
@@ -96,7 +114,14 @@ export async function refreshRecurring(input: {
   if (accountIds.length === 0) return { source: "plaid", streams: 0 };
 
   try {
-    const { data } = await plaid().transactionsRecurringGet({ access_token: input.accessToken });
+    const { data } = await plaid().transactionsRecurringGet({
+      access_token: input.accessToken,
+      // Same taxonomy as synced transactions, so stream and transaction categories agree.
+      options: {
+        include_personal_finance_category: true,
+        personal_finance_category_version: PersonalFinanceCategoryVersion.V2,
+      },
+    });
     const streams: StreamInsert[] = [];
     for (const [list, direction] of [
       [data.outflow_streams, "outflow"],
@@ -107,7 +132,12 @@ export async function refreshRecurring(input: {
         if (accountId) streams.push(mapPlaidStream(stream, direction, input.userId, accountId));
       }
     }
-    await upsertStreams(streams, accountIds, "plaid");
+    const categories = await loadTransactionCategories(streams.flatMap((s) => s.transaction_ids ?? []));
+    await upsertStreams(
+      streams.map((s) => applyMajorityCategory(s, categories)),
+      accountIds,
+      "plaid",
+    );
     return { source: "plaid", streams: streams.length };
   } catch (error) {
     const body = plaidError(error);
