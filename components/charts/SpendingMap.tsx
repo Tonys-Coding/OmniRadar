@@ -32,6 +32,8 @@ type Gesture = {
   startY: number;
   moved: boolean;
   target: Target | null;
+  /** Map coordinates where the press started (for tap-to-select). */
+  point?: [number, number];
   pinchDist?: number;
   pinchCenter?: [number, number];
 };
@@ -230,10 +232,27 @@ export function SpendingMap({ data, action, listSize = 6 }: { data: LocationsRes
     animateTo(box ? fitBox(box, BOUNDS, 0.35, MAP_WIDTH / 6) : fullView(BOUNDS));
   }
 
-  function activate(t: Target) {
-    if (t.kind === "state") {
-      if (regionTotals.has(t.key) || citiesPerRegion.has(t.key)) focusState(t.key);
-    } else selectPlace(t.key);
+  /**
+   * A tap/click on the map (not a drag):
+   *   - no state selected: select the state under the point (any state, even
+   *     with no spending), or the city whose marker was hit
+   *   - state selected: a city marker selects that city, the state itself does
+   *     nothing, and anywhere outside it returns to the full 1x map
+   */
+  function handleTap(target: Target | null, point: [number, number]) {
+    if (target?.kind === "place") {
+      const m = markers.find((x) => x.key === target.key);
+      if (m && (!focus || m.p.region === focus)) {
+        selectPlace(target.key);
+        return;
+      }
+    }
+    const state = stateAt(point[0], point[1]);
+    if (focus) {
+      if (state !== focus) reset();
+      return;
+    }
+    if (state) focusState(state);
   }
 
   // ---- gestures ---------------------------------------------------------
@@ -246,7 +265,14 @@ export function SpendingMap({ data, action, listSize = 6 }: { data: LocationsRes
     }
     pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
     if (pointers.current.size === 1) {
-      gesture.current = { startView: viewRef.current, startX: e.clientX, startY: e.clientY, moved: false, target: targetOf(e.target) };
+      gesture.current = {
+        startView: viewRef.current,
+        startX: e.clientX,
+        startY: e.clientY,
+        moved: false,
+        target: targetOf(e.target),
+        point: toMap(e.clientX, e.clientY),
+      };
     } else if (pointers.current.size === 2 && gesture.current) {
       const [a, b] = [...pointers.current.values()] as [{ x: number; y: number }, { x: number; y: number }];
       gesture.current = {
@@ -296,7 +322,7 @@ export function SpendingMap({ data, action, listSize = 6 }: { data: LocationsRes
     pointers.current.delete(e.pointerId);
     const g = gesture.current;
     if (pointers.current.size === 0) {
-      if (!cancelled && g && !g.moved && g.target) activate(g.target);
+      if (!cancelled && g && !g.moved && g.point) handleTap(g.target, g.point);
       gesture.current = null;
     } else if (g) {
       // One finger lifted from a pinch: continue as a pan from here.
@@ -440,85 +466,93 @@ export function SpendingMap({ data, action, listSize = 6 }: { data: LocationsRes
 
       <div className="grid gap-4 md:grid-cols-[minmax(0,260px)_1fr]">
         {/* Frosted list: states, or cities (all or within the focused state). */}
-        <div className="order-2 flex min-w-0 flex-col rounded-3xl border border-white/10 bg-white/[0.04] p-2 backdrop-blur-md md:order-1 md:max-h-[520px]">
-          <div className="flex items-center gap-2 px-2 pt-1 pb-2">
-            {focus ? (
-              <button onClick={reset} aria-label="Back to all states" className="grid size-7 place-items-center rounded-full bg-white/10 text-white hover:bg-white/20">
-                <ArrowLeft className="size-3.5" />
-              </button>
-            ) : null}
-            <p className="min-w-0 flex-1 truncate text-sm text-white/80">
-              {focus ? stateName(focus) : mode === "states" ? "Top states" : "Top cities"}
-            </p>
-            {focusTotal ? <span className="text-sm font-medium text-white tabular">{moneyWhole(focusTotal.total)}</span> : null}
-          </div>
-          <ul className="flex max-h-[340px] min-h-0 flex-col gap-1.5 overflow-y-auto md:max-h-none md:flex-1">
-            {!hasData ? (
-              <li className="px-3 py-6 text-center text-sm text-white/50">No purchases with a location in this period yet.</li>
-            ) : !focus && mode === "states" ? (
-              data.regions.slice(0, listSize + 2).map((r) => (
-                <li key={r.region}>
-                  <button
-                    onClick={() => focusState(r.region)}
-                    onMouseEnter={() => setHover(null)}
-                    className="flex w-full items-center gap-3 rounded-2xl border border-white/8 bg-white/[0.03] px-3 py-2.5 text-left transition-colors hover:bg-white/10"
-                  >
-                    <span className="grid size-8 shrink-0 place-items-center rounded-full bg-white/10 text-[11px] font-medium text-white/85">{r.region}</span>
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate text-sm text-white">{stateName(r.region)}</span>
-                      <span className="block truncate text-xs text-white/45">
-                        {plural(citiesPerRegion.get(r.region) ?? 0, "city", "cities")} · {plural(r.count, "purchase")}
-                      </span>
-                    </span>
-                    <span className="text-sm font-medium text-white tabular">{moneyWhole(r.total)}</span>
-                  </button>
+        {/* The list never sets the row height (it scrolls inside), so selecting a
+            state can't shrink the page and make it jump. */}
+        <div className="relative order-2 min-w-0 md:order-1 md:min-h-[420px]">
+          <div className="flex min-h-[320px] min-w-0 flex-col rounded-3xl border border-white/10 bg-white/[0.04] p-2 backdrop-blur-md md:absolute md:inset-0 md:min-h-0">
+            <div className="flex items-center gap-2 px-2 pt-1 pb-2">
+              {focus ? (
+                <button onClick={reset} aria-label="Back to all states" className="grid size-7 place-items-center rounded-full bg-white/10 text-white hover:bg-white/20">
+                  <ArrowLeft className="size-3.5" />
+                </button>
+              ) : null}
+              <p className="min-w-0 flex-1 truncate text-sm text-white/80">
+                {focus ? stateName(focus) : mode === "states" ? "Top states" : "Top cities"}
+              </p>
+              {focusTotal ? <span className="text-sm font-medium text-white tabular">{moneyWhole(focusTotal.total)}</span> : null}
+            </div>
+            <ul className="flex max-h-[340px] min-h-0 flex-col gap-1.5 overflow-y-auto md:max-h-none md:flex-1">
+              {focus && listPlaces.length === 0 ? (
+                <li className="px-3 py-6 text-center text-sm text-white/50">
+                  No in-person spending in {stateName(focus)} in this period.
                 </li>
-              ))
-            ) : (
-              listPlaces.slice(0, focus ? 30 : listSize + 2).map((p) => {
-                const key = `${p.city}|${p.region ?? ""}`;
-                return (
-                  <li key={key}>
+              ) : !hasData ? (
+                <li className="px-3 py-6 text-center text-sm text-white/50">No purchases with a location in this period yet.</li>
+              ) : !focus && mode === "states" ? (
+                data.regions.slice(0, listSize + 2).map((r) => (
+                  <li key={r.region}>
                     <button
-                      onClick={() => selectPlace(key)}
-                      className={cx(
-                        "flex w-full items-center gap-3 rounded-2xl border px-3 py-2.5 text-left transition-colors",
-                        key === selected ? "border-brand/60 bg-brand/15" : "border-white/8 bg-white/[0.03] hover:bg-white/10",
-                      )}
+                      onClick={() => focusState(r.region)}
+                      onMouseEnter={() => setHover(null)}
+                      className="flex w-full items-center gap-3 rounded-2xl border border-white/8 bg-white/[0.03] px-3 py-2.5 text-left transition-colors hover:bg-white/10"
                     >
-                      <span className="grid size-8 shrink-0 place-items-center rounded-full bg-white/10 text-white/80">
-                        <MapPin className="size-4" />
-                      </span>
+                      <span className="grid size-8 shrink-0 place-items-center rounded-full bg-white/10 text-[11px] font-medium text-white/85">{r.region}</span>
                       <span className="min-w-0 flex-1">
-                        <span className="block truncate text-sm text-white">{p.city}</span>
+                        <span className="block truncate text-sm text-white">{stateName(r.region)}</span>
                         <span className="block truncate text-xs text-white/45">
-                          {p.region ?? p.country ?? ""} · {plural(p.count, "purchase")}
+                          {plural(citiesPerRegion.get(r.region) ?? 0, "city", "cities")} · {plural(r.count, "purchase")}
                         </span>
                       </span>
-                      <span className="text-sm font-medium text-white tabular">{moneyWhole(p.total)}</span>
+                      <span className="text-sm font-medium text-white tabular">{moneyWhole(r.total)}</span>
                     </button>
                   </li>
-                );
-              })
-            )}
-            {!focus && data.online.total > 0 ? (
-              <li className="flex items-center gap-3 rounded-2xl border border-white/8 bg-white/[0.03] px-3 py-2.5">
-                <span className="grid size-8 shrink-0 place-items-center rounded-full bg-white/10 text-white/80">
-                  <Globe className="size-4" />
-                </span>
-                <span className="min-w-0 flex-1">
-                  <span className="block text-sm text-white">Online</span>
-                  <span className="block text-xs text-white/45">{plural(data.online.count, "purchase")}</span>
-                </span>
-                <span className="text-sm font-medium text-white tabular">{moneyWhole(data.online.total)}</span>
-              </li>
-            ) : null}
-          </ul>
-          {hasData ? <MapSummary data={data} focus={focus} /> : null}
+                ))
+              ) : (
+                listPlaces.slice(0, focus ? 30 : listSize + 2).map((p) => {
+                  const key = `${p.city}|${p.region ?? ""}`;
+                  return (
+                    <li key={key}>
+                      <button
+                        onClick={() => selectPlace(key)}
+                        className={cx(
+                          "flex w-full items-center gap-3 rounded-2xl border px-3 py-2.5 text-left transition-colors",
+                          key === selected ? "border-brand/60 bg-brand/15" : "border-white/8 bg-white/[0.03] hover:bg-white/10",
+                        )}
+                      >
+                        <span className="grid size-8 shrink-0 place-items-center rounded-full bg-white/10 text-white/80">
+                          <MapPin className="size-4" />
+                        </span>
+                        <span className="min-w-0 flex-1">
+                          <span className="block truncate text-sm text-white">{p.city}</span>
+                          <span className="block truncate text-xs text-white/45">
+                            {p.region ?? p.country ?? ""} · {plural(p.count, "purchase")}
+                          </span>
+                        </span>
+                        <span className="text-sm font-medium text-white tabular">{moneyWhole(p.total)}</span>
+                      </button>
+                    </li>
+                  );
+                })
+              )}
+              {!focus && data.online.total > 0 ? (
+                <li className="flex items-center gap-3 rounded-2xl border border-white/8 bg-white/[0.03] px-3 py-2.5">
+                  <span className="grid size-8 shrink-0 place-items-center rounded-full bg-white/10 text-white/80">
+                    <Globe className="size-4" />
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-sm text-white">Online</span>
+                    <span className="block text-xs text-white/45">{plural(data.online.count, "purchase")}</span>
+                  </span>
+                  <span className="text-sm font-medium text-white tabular">{moneyWhole(data.online.total)}</span>
+                </li>
+              ) : null}
+            </ul>
+            {hasData ? <MapSummary data={data} focus={focus} /> : null}
+          </div>
         </div>
 
         {/* Map */}
-        <div ref={wrapRef} className="relative order-1 min-w-0 overflow-hidden rounded-3xl md:order-2">
+        <div ref={wrapRef} className="relative order-1 min-w-0 overflow-hidden rounded-3xl md:order-2 md:self-center">
           <svg
             ref={svgRef}
             viewBox={`${view.x} ${view.y} ${view.w} ${view.h}`}
@@ -531,10 +565,6 @@ export function SpendingMap({ data, action, listSize = 6 }: { data: LocationsRes
             onPointerUp={(e) => endPointer(e, false)}
             onPointerCancel={(e) => endPointer(e, true)}
             onPointerLeave={() => setHover(null)}
-            onDoubleClick={(e) => {
-              const [mx, my] = toMap(e.clientX, e.clientY);
-              animateTo(zoomAt(viewRef.current, 2, mx, my, BOUNDS));
-            }}
           >
             <defs>
               <radialGradient id={glowId}>
@@ -609,7 +639,7 @@ export function SpendingMap({ data, action, listSize = 6 }: { data: LocationsRes
           </div>
         </div>
       </div>
-      <p className="mt-3 text-xs text-white/40">Drag to pan · pinch, double-click, or Ctrl/⌘ + scroll to zoom · click a state to see its cities</p>
+      <p className="mt-3 text-xs text-white/40">Click a state to see its cities, click outside it to go back · drag to pan · pinch or Ctrl/⌘ + scroll to zoom</p>
     </div>
   );
 }
