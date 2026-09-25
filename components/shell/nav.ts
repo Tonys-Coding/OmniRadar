@@ -1,4 +1,4 @@
-import { ArrowLeftRight, CalendarClock, ChartPie, Landmark, LayoutGrid, Repeat, Settings } from "lucide-react";
+import { ArrowLeftRight, CalendarClock, ChartPie, CreditCard, Landmark, LayoutGrid, Repeat, Settings } from "lucide-react";
 
 export const NAV = [
   { href: "/", label: "Dashboard", short: "Home", icon: LayoutGrid },
@@ -6,6 +6,7 @@ export const NAV = [
   { href: "/spending", label: "Spending", short: "Spending", icon: ChartPie },
   { href: "/subscriptions", label: "Subscriptions", short: "Subs", icon: Repeat },
   { href: "/bills", label: "Bills", short: "Bills", icon: CalendarClock },
+  { href: "/cards", label: "Cards", short: "Cards", icon: CreditCard },
   { href: "/accounts", label: "Accounts", short: "Accounts", icon: Landmark },
 ] as const;
 

@@ -9,6 +9,7 @@
   - `shell/`: sidebar, mobile nav, page header
   - `charts/`: custom SVG charts, including `SpendingMap`
   - `brand/Logo.tsx`: the logo
+  - `BankCard.tsx`: an account drawn as a payment card, plus network logos
 - `lib/`:
   - `env.ts`: validated env vars
   - `auth.ts`, `http.ts`: route wrappers and JSON errors
@@ -19,6 +20,7 @@
   - `finance/`: aggregation and analytics
   - `geo/`: map geometry and viewport math
   - `alerts.ts`, `settings.ts`
+  - `cards.ts`: card network guess, bank colors, and card figures; `institutions.ts`: caches bank branding from Plaid
   - `client/`: browser-only API client, response types, settings context
 - `supabase/migrations/`: SQL schema with RLS.
 - `scripts/`:
@@ -47,6 +49,7 @@
   - Transfers, card payments, and loan disbursements are excluded.
   - Money into a card or loan is never income.
   - Payroll deposits count as income even when Plaid miscategorizes them.
+- **Never store or show card expiry dates, CVVs, or full numbers.** Cards show the last 4 and balances only.
 - **Plaid categories use the v2 taxonomy.** Request `personal_finance_category_version: v2`.
 - **Next.js route files** may only export route handlers and route config; put helpers in `lib/`.
 - **Keep pure logic unit-testable:** `lib/finance`, `lib/recurring`, `lib/geo`, `lib/alerts`. Run `npm test`, `npm run typecheck`, and `npm run lint` before committing.

@@ -14,12 +14,14 @@ There is one user type, the owner. Sign-ups are disabled and the account is crea
   - current cash balance by account
   - cash and net-worth history, rebuilt from transactions
   - 12-week spending heatmap
+  - "My Cards" carousel
   - upcoming bills carousel
   - recent transactions
   - income versus spending
   - spending by category
   - monthly fixed costs
   - the interactive spending map
+- **Cards (`/cards`):** every checking, savings, and credit account as a card (bank color, network logo, last 4, balance and available or limit), with totals, a detail panel (balances, credit used, include-in-totals, pick the card network), and recent activity. Tap a card on the dashboard to open it here.
 - **Transactions:** search and filter (money in/out, category, account, date range), grouped by day, with a detail sheet for adding notes.
 - **Spending:** month view compared with the previous month, daily average and projection, categories with changes, top merchants, a 26-week heatmap, and the full map.
 - **Spending map:**

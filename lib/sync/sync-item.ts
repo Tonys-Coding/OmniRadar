@@ -1,6 +1,7 @@
 import "server-only";
 import { PersonalFinanceCategoryVersion } from "plaid";
 import { today } from "@/lib/dates";
+import { ensureBranding } from "@/lib/institutions";
 import { getItemWithToken, saveCursor } from "@/lib/items";
 import { plaid, plaidError, RELINK_ERROR_CODES } from "@/lib/plaid";
 import { refreshRecurring, type RecurringResult } from "@/lib/recurring/refresh";
@@ -91,6 +92,7 @@ export async function syncItem(itemId: string, trigger: SyncTrigger, opts: { wai
 
   try {
     const accountMap = await refreshAccounts(item.user_id, item.id, accessToken);
+    await ensureBranding(item);
 
     const fetchPage = async (c: string | undefined) =>
       (

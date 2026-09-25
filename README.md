@@ -103,7 +103,8 @@ Amounts follow Plaid: **positive = money out, negative = money in.**
 | POST | `/api/sync` | Pull latest data now (`{item_id}` optional) |
 | GET | `/api/summary?months=6` | Dashboard: net worth, this month, cashflow, recurring |
 | GET | `/api/accounts` | Accounts, balances, credit utilization, totals |
-| PATCH | `/api/accounts/:id` | `{is_hidden}` to leave an account out of totals |
+| PATCH | `/api/accounts/:id` | `{is_hidden}` to leave an account out of totals, `{card_network}` for the card art |
+| GET | `/api/cards` | Cash and credit accounts drawn as cards: bank color and logo, network, last 4, balances |
 | GET | `/api/transactions` | Filters: `start end account_id category q min_amount max_amount direction pending limit offset` |
 | PATCH | `/api/transactions/:id` | `{notes, user_category_id}` |
 | GET | `/api/recurring` | All recurring streams (`kind direction include_inactive include_ignored`) |

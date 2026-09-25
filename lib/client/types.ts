@@ -1,6 +1,6 @@
 // Response shapes of OmniRadar's API routes (see app/api/**/route.ts).
 
-import type { ItemStatus, StreamFrequency, StreamKind } from "@/lib/supabase/database.types";
+import type { CardNetwork, ItemStatus, StreamFrequency, StreamKind } from "@/lib/supabase/database.types";
 
 export type NetWorth = { net_worth: number; assets: number; liabilities: number; by_type: Record<string, number> };
 export type MonthCashflow = { month: string; income: number; spending: number; net: number; savings_rate: number | null };
@@ -150,3 +150,26 @@ export type SyncResult = {
   removed: number;
   error?: { code: string; message: string };
 };
+
+export type CardFigure = { label: string; value: number };
+export type BankCardData = {
+  id: string;
+  name: string;
+  official_name: string | null;
+  mask: string | null;
+  type: string;
+  subtype: string | null;
+  current_balance: number | null;
+  available_balance: number | null;
+  credit_limit: number | null;
+  balance_updated_at: string | null;
+  is_hidden: boolean;
+  card_network: CardNetwork | null;
+  has_card: boolean;
+  network: CardNetwork | null;
+  network_guessed: boolean;
+  colors: { base: string; from: string; to: string };
+  figures: { primary: CardFigure; secondary: CardFigure | null; utilization: number | null };
+  institution: { id: string; name: string | null; status: ItemStatus; last_synced_at: string | null; logo: string | null } | null;
+};
+export type CardsResponse = { cards: BankCardData[]; setup_needed: boolean };

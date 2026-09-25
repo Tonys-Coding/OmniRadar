@@ -104,6 +104,11 @@ async function checkSupabase(e: Env) {
   if (missingTables.length === 0) pass(`Secret key works and all ${TABLES.length} tables exist`);
   else fail(`Missing tables: ${missingTables.join(", ")}`, "Apply the migrations (see supabase/README.md)");
 
+  // Later migrations (columns on existing tables)
+  const cards = await admin.from("accounts").select("card_network, plaid_items(institution_branding)").limit(1);
+  if (!cards.error) pass("Card branding migration applied");
+  else warn("Card branding migration not applied", "Run supabase/migrations/20260925000000_card_branding.sql in the SQL Editor");
+
   // Browser key must NOT be able to read the token table
   const anon = createClient<Database>(url, e.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY, {
     auth: { persistSession: false, autoRefreshToken: false },

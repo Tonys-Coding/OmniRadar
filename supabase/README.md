@@ -37,7 +37,7 @@ npx supabase db push
 | --- | --- | --- |
 | `plaid_items` | One row per linked bank login | read own |
 | `plaid_item_secrets` | Encrypted Plaid access token + sync cursor | **none** (server only) |
-| `accounts` | Checking, savings, cards, loans, investments | read own, edit `is_hidden` |
+| `accounts` | Checking, savings, cards, loans, investments | read own, edit `is_hidden`, `card_network` |
 | `transactions` | Every transaction (positive amount = money out) | read own, edit `notes`, `user_category_id` |
 | `recurring_streams` | Subscriptions, bills, income | read own, edit `kind_override`, `is_ignored` |
 | `balance_snapshots` | Daily balance per account, for net-worth history | read own |

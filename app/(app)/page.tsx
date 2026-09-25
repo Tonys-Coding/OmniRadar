@@ -1,14 +1,16 @@
 "use client";
 
-import { ArrowRight, CalendarDays, CalendarRange, Landmark, Plus, Receipt, RefreshCw } from "lucide-react";
+import { ArrowRight, CalendarDays, CalendarRange, CreditCard, Landmark, Plus, Receipt, RefreshCw } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
+import { BankCard } from "@/components/BankCard";
 import { BillCard } from "@/components/BillCard";
 import { AllocationBar } from "@/components/charts/AllocationBar";
 import { AreaChart } from "@/components/charts/AreaChart";
 import { BarPairs } from "@/components/charts/BarPairs";
 import { Heatmap } from "@/components/charts/Heatmap";
 import { SpendingMap } from "@/components/charts/SpendingMap";
+import { ConnectBankButton } from "@/components/PlaidConnect";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { TransactionRow } from "@/components/TransactionRow";
 import { BigMoney, Button, Card, CardHeader, cx, EmptyState, IconChip, Pill, Segmented, Skeleton } from "@/components/ui";
@@ -17,6 +19,7 @@ import { api, refreshAll, useApi } from "@/lib/client/api";
 import type {
   AccountsResponse,
   BillsResponse,
+  CardsResponse,
   DailyResponse,
   LocationsResponse,
   NetWorthResponse,
@@ -282,6 +285,42 @@ function CategoryCard({ summary }: { summary?: Summary }) {
   );
 }
 
+/** "My Cards": every account as a swipeable card; tap one for details. */
+function MyCards() {
+  const { data } = useApi<CardsResponse>("/api/cards");
+  if (data && data.cards.length === 0) return null;
+  return (
+    <Card className="overflow-hidden !px-0 md:col-span-2 xl:col-span-12">
+      <CardHeader
+        className="px-5 sm:px-6"
+        title="My Cards"
+        icon={
+          <span className="grid size-10 place-items-center rounded-full border border-line">
+            <CreditCard className="size-[18px]" strokeWidth={1.8} />
+          </span>
+        }
+        action={
+          <div className="flex items-center gap-1">
+            <Link href="/cards" className="hidden px-3 text-sm text-muted hover:text-ink sm:block">
+              View all
+            </Link>
+            <ConnectBankButton variant="secondary" size="sm">
+              <Plus /> Add new
+            </ConnectBankButton>
+          </div>
+        }
+      />
+      <div className="no-scrollbar mt-5 flex snap-x snap-mandatory gap-3 overflow-x-auto scroll-px-5 px-5 pb-1 sm:scroll-px-6 sm:px-6">
+        {data
+          ? data.cards.map((c) => (
+              <BankCard key={c.id} card={c} href={`/cards?card=${c.id}`} className="w-[min(300px,82vw)] shrink-0 snap-start sm:w-[320px]" />
+            ))
+          : Array.from({ length: 3 }, (_, i) => <Skeleton key={i} className="aspect-[1.586/1] w-[min(300px,82vw)] shrink-0 rounded-[22px] sm:w-[320px]" />)}
+      </div>
+    </Card>
+  );
+}
+
 function ActivityCard() {
   const { settings } = useSettings();
   const { data } = useApi<DailyResponse>("/api/spending/daily?days=84");
@@ -488,6 +527,7 @@ export default function DashboardPage() {
 
         <BalanceCard summary={summary} />
         <BalanceHero />
+        <MyCards />
 
         <ActivityCard />
         <UpcomingCard />

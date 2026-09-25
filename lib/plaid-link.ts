@@ -2,6 +2,7 @@ import "server-only";
 import { CountryCode, Products, type LinkTokenCreateRequest } from "plaid";
 import { env } from "@/lib/env";
 import { HttpError } from "@/lib/http";
+import { fetchInstitution } from "@/lib/institutions";
 import { getItemWithToken, storeItem } from "@/lib/items";
 import { plaid } from "@/lib/plaid";
 import { supabaseAdmin } from "@/lib/supabase/admin";
@@ -39,11 +40,7 @@ export async function createLinkToken(userId: string, itemId?: string) {
 async function institutionName(institutionId: string | null | undefined) {
   if (!institutionId) return null;
   try {
-    const { data } = await plaid().institutionsGetById({
-      institution_id: institutionId,
-      country_codes: [CountryCode.Us],
-    });
-    return data.institution.name;
+    return (await fetchInstitution(institutionId)).name;
   } catch {
     return null;
   }

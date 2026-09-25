@@ -123,7 +123,7 @@ function TransactionsView() {
   const [query, setQuery] = useState(params.get("q") ?? "");
   const [direction, setDirection] = useState<"all" | "in" | "out">("all");
   const [category, setCategory] = useState(params.get("category") ?? "");
-  const [accountId, setAccountId] = useState("");
+  const [accountId, setAccountId] = useState(params.get("account") ?? "");
   const [range, setRange] = useState<RangeValue>("90");
   const [selected, setSelected] = useState<Transaction | null>(null);
   const { data: accounts } = useApi<AccountsResponse>("/api/accounts");

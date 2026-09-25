@@ -43,9 +43,14 @@ export type PlaidItemRow = {
   error_code: string | null;
   consent_expires_at: string | null;
   last_synced_at: string | null;
+  /** Cached bank color/logo from Plaid; null until a sync fetches it. */
+  institution_branding: InstitutionBranding | null;
   created_at: string;
   updated_at: string;
 };
+
+export type InstitutionBranding = { color: string | null; logo: string | null; fetched_at: string };
+export type CardNetwork = "visa" | "mastercard" | "amex" | "discover";
 
 export type PlaidItemSecretRow = {
   item_id: string;
@@ -70,6 +75,8 @@ export type AccountRow = {
   iso_currency_code: string | null;
   balance_updated_at: string | null;
   is_hidden: boolean;
+  /** The owner's choice for the card art; null = guess. */
+  card_network: CardNetwork | null;
   created_at: string;
   updated_at: string;
 };
