@@ -60,7 +60,7 @@ function MonthCalendar({ streams }: { streams: Stream[] }) {
       />
       <p className="mt-2 text-sm text-muted">
         <span className="text-ink tabular">{money(outTotal)}</span> going out ·{" "}
-        <span className="text-brand tabular">{money(inTotal)}</span> coming in
+        <span className="text-brand-ink tabular">{money(inTotal)}</span> coming in
       </p>
       <div className="mt-5 grid grid-cols-7 gap-1 text-center text-xs text-muted sm:gap-2">
         {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((d) => (
@@ -105,7 +105,7 @@ function MonthCalendar({ streams }: { streams: Stream[] }) {
                   <Logo src={e.stream.logo_url} name={e.stream.merchant_name ?? e.stream.description} size={32} />
                   <span className="flex-1 truncate">{tidyName(e.stream.merchant_name ?? e.stream.description)}</span>
                   {e.paid ? <Check className="size-4 text-success" aria-label="Paid" /> : null}
-                  <span className={cx("font-medium tabular", e.stream.direction === "inflow" && "text-brand")}>
+                  <span className={cx("font-medium tabular", e.stream.direction === "inflow" && "text-brand-ink")}>
                     {e.stream.direction === "inflow" ? "+" : ""}
                     {money(e.amount)}
                   </span>

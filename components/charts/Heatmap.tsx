@@ -5,9 +5,9 @@ import type { DayTotal } from "@/lib/client/types";
 import { money, relativeDay } from "@/lib/format";
 
 // Daily spending calendar, styled after the "Trading Activity" grid:
-// gray = light day, blues = moderate, ink = heavy.
+// gray = light day, teals = moderate, ink = heavy.
 
-const LEVELS = ["#EDEDF0", "#C9D8FF", "#5B91FF", "#121214"];
+const LEVELS = ["#EDEDF0", "#B8E8E9", "#14A1A5", "#121214"];
 const WEEKDAYS_MON = ["M", "T", "W", "T", "F", "S", "S"];
 const WEEKDAYS_SUN = ["S", "M", "T", "W", "T", "F", "S"];
 

@@ -159,12 +159,12 @@ export default function SpendingPage() {
                         <div className="flex items-baseline justify-between gap-3 text-[15px]">
                           <span className="flex items-center gap-2.5">
                             <span className="size-3 rounded-[4px]" style={{ background: colorAt(i) }} />
-                            <span className="group-hover:text-brand">{categoryLabel(c.category)}</span>
+                            <span className="group-hover:text-brand-ink">{categoryLabel(c.category)}</span>
                             <span className="text-xs text-faint">{percent(c.share)}</span>
                           </span>
                           <span className="flex items-baseline gap-3">
                             {change !== null ? (
-                              <span className={cx("text-xs tabular", change > 0 ? "text-ink" : "text-brand")}>
+                              <span className={cx("text-xs tabular", change > 0 ? "text-ink" : "text-brand-ink")}>
                                 {change > 0 ? "▲" : "▼"} {percent(Math.abs(change))}
                               </span>
                             ) : (

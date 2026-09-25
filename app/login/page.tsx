@@ -66,7 +66,7 @@ export default function LoginPage() {
   return (
     <main className="relative flex min-h-dvh flex-col items-center justify-center overflow-hidden bg-ink px-4 py-10">
       {/* soft brand glow */}
-      <div className="pointer-events-none absolute -top-40 left-1/2 size-[640px] -translate-x-1/2 rounded-full bg-brand/25 blur-[120px]" />
+      <div className="pointer-events-none absolute -top-40 left-1/2 size-[640px] -translate-x-1/2 rounded-full bg-brand-bright/20 blur-[120px]" />
       <div className="relative w-full max-w-md animate-fade-up rounded-[var(--radius-canvas)] bg-canvas p-8 sm:p-10">
         <Logo className="text-[26px]" />
         <h1 className="mt-6 text-3xl font-medium tracking-tight">Welcome back</h1>

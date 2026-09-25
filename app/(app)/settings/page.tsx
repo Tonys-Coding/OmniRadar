@@ -420,7 +420,7 @@ function DataSection({ toast }: { toast: (m: string, t?: "ok" | "error") => void
       </Row>
       <div className="py-4">
         <p className="flex items-center gap-2 font-medium">
-          <ShieldCheck className="size-4 text-brand" /> How your data is protected
+          <ShieldCheck className="size-4 text-brand-ink" /> How your data is protected
         </p>
         <ul className="mt-2 space-y-1.5 text-sm text-muted">
           <li>• Bank passwords never touch OmniRadar: you sign in on your bank&apos;s own page through Plaid.</li>

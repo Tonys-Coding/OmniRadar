@@ -32,7 +32,7 @@ export function BillCard({ bill, featured }: { bill: Bill; featured?: boolean })
         <span className="text-lg text-white/70">{cents}</span>
       </p>
       <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-white/10">
-        <div className="h-full rounded-full bg-brand" style={{ width: `${progress * 100}%` }} />
+        <div className="h-full rounded-full bg-brand-bright" style={{ width: `${progress * 100}%` }} />
       </div>
       <p className={cx("mt-2 flex justify-between text-xs", bill.overdue ? "text-danger" : "text-white/60")}>
         <span>{bill.predicted_next_date ? dueLabel(bill.predicted_next_date) : ""}</span>

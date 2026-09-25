@@ -104,7 +104,7 @@ function Notifications() {
       >
         <Bell className="size-[19px]" strokeWidth={1.8} />
         {unread.length > 0 ? (
-          <span className="absolute -top-0.5 -right-0.5 grid min-w-5 place-items-center rounded-full bg-brand px-1 text-[10px] font-medium text-white ring-2 ring-canvas">
+          <span className="absolute -top-0.5 -right-0.5 grid min-w-5 place-items-center rounded-full bg-brand-ink px-1 text-[10px] font-medium text-white ring-2 ring-canvas">
             {unread.length}
           </span>
         ) : null}
@@ -128,7 +128,7 @@ function Notifications() {
                   <span
                     className={cx(
                       "mt-0.5 grid size-8 shrink-0 place-items-center rounded-full",
-                      a.severity === "critical" ? "bg-danger/10 text-danger" : a.severity === "warning" ? "bg-ink text-white" : "bg-brand-pale text-navy",
+                      a.severity === "critical" ? "bg-danger/10 text-danger" : a.severity === "warning" ? "bg-ink text-white" : "bg-brand-pale text-brand-deep",
                     )}
                   >
                     <Icon className="size-4" />
@@ -174,7 +174,7 @@ export function Avatar({ size = 44, className }: { size?: number; className?: st
   return (
     <span
       style={{ width: size, height: size, fontSize: size * 0.34 }}
-      className={cx("grid shrink-0 place-items-center rounded-full bg-gradient-to-br from-brand to-navy font-medium text-white", className)}
+      className={cx("grid shrink-0 place-items-center rounded-full bg-gradient-to-br from-brand-ink to-brand-deep font-medium text-white", className)}
     >
       {initials(nameOf(profile))}
     </span>
@@ -204,7 +204,7 @@ function ProfileMenu() {
           className="absolute right-0 z-50 mt-2 w-[320px] max-w-[calc(100vw-24px)] animate-fade-up overflow-hidden rounded-[28px] border border-line bg-canvas shadow-2xl shadow-black/15"
         >
           <div className="relative bg-ink p-5 text-white">
-            <div className="pointer-events-none absolute -top-16 -right-10 size-44 rounded-full bg-brand/40 blur-3xl" />
+            <div className="pointer-events-none absolute -top-16 -right-10 size-44 rounded-full bg-brand-bright/35 blur-3xl" />
             <button onClick={close} aria-label="Close" className="absolute top-3 right-3 grid size-8 place-items-center rounded-full text-white/60 hover:bg-white/10 hover:text-white">
               <X className="size-4" />
             </button>

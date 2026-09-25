@@ -20,7 +20,7 @@ import { useWidth } from "./useWidth";
 const BOUNDS: Bounds = { width: MAP_WIDTH, height: MAP_HEIGHT, maxZoom: 10 };
 const BASE_DOT = "#2A2A31";
 /** Dots of the selected state that are far from any city: a lifted gray so the shape reads. */
-const FOCUS_BODY = "#353A4A";
+const FOCUS_BODY = "#2F3D40";
 const ASPECT = MAP_WIDTH / MAP_HEIGHT;
 
 type Mode = "states" | "cities";
@@ -101,8 +101,8 @@ function MapSummary({ data, focus }: { data: LocationsResponse; focus: string | 
     );
   }
   const parts = [
-    { label: "In person", value: inPerson, color: "#5B91FF" },
-    { label: "Online", value: data.online.total, color: "#A8C4FF" },
+    { label: "In person", value: inPerson, color: "#6FD3D5" },
+    { label: "Online", value: data.online.total, color: "#A6E3E4" },
     { label: "No location", value: data.unknown.total, color: "#4A4A55" },
   ];
   const total = parts.reduce((sum, p) => sum + p.value, 0);
@@ -374,12 +374,12 @@ export function SpendingMap({ data, action, listSize = 6 }: { data: LocationsRes
     if (focusHeat) {
       if (state !== focus) return { fill: BASE_DOT, opacity: 1 };
       const heat = heatAt(x, y, focusHeat.sources, focusHeat.radius);
-      return heat < 0.1 ? { fill: FOCUS_BODY, opacity: 1 } : { fill: "#5B91FF", opacity: 0.22 + heat * 0.78 };
+      return heat < 0.1 ? { fill: FOCUS_BODY, opacity: 1 } : { fill: "#6FD3D5", opacity: 0.22 + heat * 0.78 };
     }
     const r = regionTotals.get(state);
     if (!r) return { fill: BASE_DOT, opacity: 1 };
     const t = Math.sqrt(r.total / maxRegion);
-    return { fill: "#5B91FF", opacity: mode === "cities" ? 0.16 + t * 0.3 : 0.3 + t * 0.7 };
+    return { fill: "#6FD3D5", opacity: mode === "cities" ? 0.16 + t * 0.3 : 0.3 + t * 0.7 };
   }
 
   const showMarkers = mode === "cities" || focus !== null;
@@ -516,7 +516,7 @@ export function SpendingMap({ data, action, listSize = 6 }: { data: LocationsRes
                         onClick={() => selectPlace(key)}
                         className={cx(
                           "flex w-full items-center gap-3 rounded-2xl border px-3 py-2.5 text-left transition-colors",
-                          key === selected ? "border-brand/60 bg-brand/15" : "border-white/8 bg-white/[0.03] hover:bg-white/10",
+                          key === selected ? "border-brand-bright/60 bg-brand-bright/15" : "border-white/8 bg-white/[0.03] hover:bg-white/10",
                         )}
                       >
                         <span className="grid size-8 shrink-0 place-items-center rounded-full bg-white/10 text-white/80">
@@ -568,8 +568,8 @@ export function SpendingMap({ data, action, listSize = 6 }: { data: LocationsRes
           >
             <defs>
               <radialGradient id={glowId}>
-                <stop offset="0" stopColor="#5B91FF" stopOpacity="0.9" />
-                <stop offset="1" stopColor="#5B91FF" stopOpacity="0" />
+                <stop offset="0" stopColor="#6FD3D5" stopOpacity="0.9" />
+                <stop offset="1" stopColor="#6FD3D5" stopOpacity="0" />
               </radialGradient>
             </defs>
             {dots.map((d, i) => {
@@ -583,7 +583,7 @@ export function SpendingMap({ data, action, listSize = 6 }: { data: LocationsRes
                   return (
                     <g key={m.key} data-place={m.key}>
                       <circle cx={x} cy={y} r={(10 + m.weight * 18) * unit} fill={`url(#${glowId})`} />
-                      <circle cx={x} cy={y} r={(3.5 + m.weight * 4.5) * unit} fill="#fff" stroke={active ? "#5B91FF" : "none"} strokeWidth={3 * unit} />
+                      <circle cx={x} cy={y} r={(3.5 + m.weight * 4.5) * unit} fill="#fff" stroke={active ? "#6FD3D5" : "none"} strokeWidth={3 * unit} />
                       {/* generous invisible hit area for fingers */}
                       <circle cx={x} cy={y} r={14 * unit} fill="transparent" />
                     </g>
@@ -598,7 +598,7 @@ export function SpendingMap({ data, action, listSize = 6 }: { data: LocationsRes
               key={c.key}
               className={cx(
                 "pointer-events-none absolute flex items-center gap-2 rounded-xl px-2.5 py-1.5 text-xs whitespace-nowrap shadow-lg transition-opacity sm:text-[13px]",
-                c.active ? "bg-brand text-white" : "bg-white text-ink",
+                c.active ? "bg-brand-bright text-ink" : "bg-white text-ink",
               )}
               style={{ left: c.x, top: c.y, transform: c.below ? "translate(-50%, 10px)" : "translate(-50%, calc(-100% - 10px))" }}
             >

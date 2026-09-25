@@ -32,16 +32,16 @@ export function detailedLabel(primary: string | null, detailed: string | null): 
   return rest.toLowerCase().replace(/_/g, " ").replace(/\band\b/g, "&").replace(/^\w/, (x) => x.toUpperCase());
 }
 
-// The brand palette (blues, slate, ink) extended with a few quiet accents so
-// eight categories stay distinguishable in charts.
+// The brand palette (teals from the logo, slate, ink) extended with a few
+// quiet accents so eight categories stay distinguishable in charts.
 export const SERIES_COLORS = [
-  "#5B91FF", // brand
-  "#A8C4FF", // brand soft
+  "#14A1A5", // brand teal
+  "#A6E3E4", // brand soft
   "#6E7A96", // slate
-  "#2F58C9", // navy
+  "#0A6568", // brand deep
   "#121214", // ink
   "#C7CBD6", // mist
-  "#8FB3A7", // sage
+  "#8C9BC4", // periwinkle
   "#D9B38C", // sand
 ];
 

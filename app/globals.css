@@ -1,17 +1,24 @@
 @import "tailwindcss";
 
-/* OmniRadar design tokens (brand: #5B91FF blue, #121214 ink, #FFFFFF). */
+/* OmniRadar design tokens: teal from the logo, #121214 ink, #FFFFFF. */
 @theme {
   --font-sans: var(--font-outfit), ui-sans-serif, system-ui, sans-serif;
 
   --color-ink: #121214;
   --color-ink-2: #1c1c20;
   --color-ink-3: #2a2a30;
-  --color-brand: #5b91ff;
-  --color-brand-soft: #a8c4ff;
-  --color-brand-pale: #e8efff;
+  /* Teal scale, chosen by contrast:
+       brand        fills, icons, focus rings (3.2:1 on white)
+       brand-ink    text on white (4.8:1)
+       brand-bright the logo teal, for dark surfaces (10.6:1 on ink)
+       brand-deep   text on brand-pale, gradients, hover (6.1:1) */
+  --color-brand: #14a1a5;
+  --color-brand-ink: #0a7f83;
+  --color-brand-bright: #6fd3d5;
+  --color-brand-soft: #a6e3e4;
+  --color-brand-pale: #e3f6f6;
+  --color-brand-deep: #0a6568;
   --color-slate: #6e7a96;
-  --color-navy: #2f58c9;
   --color-canvas: #ffffff;
   --color-surface: #f4f4f6;
   --color-line: #ebebef;

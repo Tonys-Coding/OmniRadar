@@ -40,7 +40,7 @@ export function TransactionRow({
         </span>
       </span>
       <span className="shrink-0 text-right">
-        <span className={cx("block font-medium tabular", incoming && "text-brand")}>{txnAmount(t.amount)}</span>
+        <span className={cx("block font-medium tabular", incoming && "text-brand-ink")}>{txnAmount(t.amount)}</span>
         {showDate ? <span className="block text-sm text-muted">{relativeDay(t.date)}</span> : null}
       </span>
     </Tag>

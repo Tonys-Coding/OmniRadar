@@ -106,7 +106,7 @@ function BalanceHero() {
       </div>
       {series.length > 1 ? (
         <p className="mt-2 text-sm text-white/55">
-          <span className={cx("font-medium tabular", change >= 0 ? "text-brand-soft" : "text-white")}>
+          <span className={cx("font-medium tabular", change >= 0 ? "text-brand-bright" : "text-white")}>
             {change >= 0 ? "+" : "-"}
             {money(Math.abs(change))}
           </span>{" "}
@@ -162,7 +162,7 @@ function BalanceCard({ summary }: { summary?: Summary }) {
         <>
           <div className="mt-6 flex flex-wrap items-end gap-x-3 gap-y-1">
             <BigMoney value={summary.balances.cash} className="text-[40px] leading-none sm:text-[44px]" />
-            <span className={cx("pb-1 text-sm", net >= 0 ? "text-brand" : "text-muted")}>
+            <span className={cx("pb-1 text-sm", net >= 0 ? "text-brand-ink" : "text-muted")}>
               {net >= 0 ? "+" : "-"}
               {money(Math.abs(net))} this month
             </span>
@@ -403,7 +403,7 @@ function MapCard() {
 function ConnectFirstBank() {
   return (
     <Card dark className="relative overflow-hidden xl:col-span-12">
-      <div className="pointer-events-none absolute -top-24 -right-24 size-80 rounded-full bg-brand/30 blur-3xl" />
+      <div className="pointer-events-none absolute -top-24 -right-24 size-80 rounded-full bg-brand-bright/30 blur-3xl" />
       <div className="relative flex flex-col items-start gap-4 sm:flex-row sm:items-center">
         <span className="grid size-12 place-items-center rounded-full bg-white/10">
           <Landmark className="size-5" />
@@ -522,7 +522,7 @@ function SubscriptionsMini({ summary }: { summary?: Summary }) {
           <ul className="mt-6 flex flex-col divide-y divide-line">
             {rows.map((row) => (
               <li key={row.label}>
-                <Link href={row.href} className="flex items-center justify-between py-3 text-[15px] hover:text-brand">
+                <Link href={row.href} className="flex items-center justify-between py-3 text-[15px] hover:text-brand-ink">
                   <span>{row.label}</span>
                   <span className="flex items-center gap-2 font-medium tabular">
                     {money(row.value)}

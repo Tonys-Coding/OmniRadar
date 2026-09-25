@@ -60,7 +60,7 @@ export function StreamMenu({ stream }: { stream: Stream }) {
               className="flex w-full items-center justify-between rounded-2xl px-3 py-2 text-sm hover:bg-surface"
             >
               {KIND_LABEL[k]}
-              {stream.effective_kind === k ? <span className="text-brand">✓</span> : null}
+              {stream.effective_kind === k ? <span className="text-brand-ink">✓</span> : null}
             </button>
           ))}
           <div className="my-1 border-t border-line" />

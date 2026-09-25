@@ -47,7 +47,7 @@ export function BarPairs({ groups, height = 190 }: { groups: BarGroup[]; height?
                   className="cursor-pointer"
                 >
                   <rect x={slot * i} y={0} width={slot} height={height} fill="transparent" />
-                  <rect x={cx - barW - 2} y={plotH - hIn} width={barW} height={Math.max(hIn, 2)} rx={barW / 2} fill="#5B91FF" opacity={dim} />
+                  <rect x={cx - barW - 2} y={plotH - hIn} width={barW} height={Math.max(hIn, 2)} rx={barW / 2} fill="#14A1A5" opacity={dim} />
                   <rect x={cx + 2} y={plotH - hOut} width={barW} height={Math.max(hOut, 2)} rx={barW / 2} fill="#121214" opacity={dim} />
                   <text x={cx} y={height - 6} textAnchor="middle" fontSize={12} fill="#121214" fillOpacity={i === active ? 0.9 : 0.45}>
                     {g.label}

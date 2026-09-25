@@ -81,7 +81,7 @@ function TransactionDetail({ t, onClose }: { t: Transaction; onClose: () => void
       <div className="flex flex-col items-center text-center">
         <Logo src={t.logo_url} name={name} size={64} />
         <p className="mt-3 text-lg font-medium">{name}</p>
-        <p className={cx("mt-1 text-[40px] leading-none font-medium tracking-tight tabular", incoming && "text-brand")}>
+        <p className={cx("mt-1 text-[40px] leading-none font-medium tracking-tight tabular", incoming && "text-brand-ink")}>
           {incoming ? "+" : "-"}
           {money(Math.abs(t.amount))}
         </p>
@@ -271,7 +271,7 @@ function TransactionsView() {
           <div className="mt-5 grid grid-cols-2 gap-3 sm:max-w-md">
             <div className="rounded-3xl bg-surface p-4">
               <p className="flex items-center gap-1.5 text-sm text-muted">
-                <ArrowDownLeft className="size-4 text-brand" /> Money in
+                <ArrowDownLeft className="size-4 text-brand-ink" /> Money in
               </p>
               <BigMoney value={pageIn} className="mt-1 block text-2xl" />
             </div>
@@ -298,7 +298,7 @@ function TransactionsView() {
           ) : groups.length === 0 ? (
             <EmptyState icon={<Receipt />} title={filtered ? "No transactions match these filters" : "No transactions yet"}>
               {filtered ? (
-                <button onClick={clearFilters} className="text-brand underline-offset-2 hover:underline">
+                <button onClick={clearFilters} className="text-brand-ink underline-offset-2 hover:underline">
                   Clear filters
                 </button>
               ) : (
@@ -310,7 +310,7 @@ function TransactionsView() {
               <section key={g.date} aria-label={relativeDay(g.date)}>
                 <h3 className="sticky top-0 z-10 -mx-1 flex justify-between bg-canvas/95 px-1 py-2 text-sm backdrop-blur">
                   <span className="font-medium">{relativeDay(g.date)}</span>
-                  <span className={cx("tabular", g.net > 0 ? "text-brand" : "text-muted")}>
+                  <span className={cx("tabular", g.net > 0 ? "text-brand-ink" : "text-muted")}>
                     {g.net > 0 ? "+" : "-"}
                     {money(Math.abs(g.net))}
                   </span>
