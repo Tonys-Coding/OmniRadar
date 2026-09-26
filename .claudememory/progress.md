@@ -15,8 +15,9 @@ _Last updated: 2026-09-25_
 - [x] Analytics APIs: summary, net worth and rebuilt balance history, daily totals, category and merchant breakdowns, spending by location, and alerts.
 - [x] Every UI page, plus the settings page, collapsible sidebar, profile modal, privacy mode, and interactive map.
 - [x] **Cards** (`/cards` page and the dashboard's "My Cards" row): each cash and credit account drawn as a card, with the bank's color, a network logo (guessed, or picked per card), the last 4 digits, and balances or credit used where EXP and CVV would go. Plaid never provides expiry dates or CVVs, and we must never store them.
+- [x] **Web Interface Guidelines pass** (2026-09-25): keyboard access for every chart and the map, focus rings, skip link, Sheet focus trap, reduced motion, URL-synced filters and ranges, hydration-safe dates, live regions, and copy fixes.
 - [x] Brand: the new radar logo, the Outfit wordmark, the teal accent palette, and the favicon.
-- [x] `npm run build`, typecheck, and lint pass; 91 unit tests pass.
+- [x] `npm run build`, typecheck, and lint pass; 95 unit tests pass.
 
 ## What is Broken / Tech Debt
 - [ ] **Card migration:** apply `supabase/migrations/20260925000000_card_branding.sql` in the SQL Editor. Until then `/api/cards` falls back to curated colors, and picking a card network returns 503. After applying it, the next sync of each bank caches its Plaid color and logo.

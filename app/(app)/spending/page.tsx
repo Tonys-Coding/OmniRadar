@@ -2,7 +2,7 @@
 
 import { ChevronLeft, ChevronRight, Gauge, Receipt, TrendingDown, TrendingUp } from "lucide-react";
 import Link from "next/link";
-import { useState } from "react";
+import { Suspense } from "react";
 import { CompareLines } from "@/components/charts/CompareLines";
 import { Heatmap } from "@/components/charts/Heatmap";
 import { SpendingMap } from "@/components/charts/SpendingMap";
@@ -10,10 +10,11 @@ import { PageHeader } from "@/components/shell/PageHeader";
 import { BigMoney, Card, CardHeader, cx, EmptyState, IconChip, Logo, Pill, Segmented, Skeleton } from "@/components/ui";
 import { categoryLabel, colorAt } from "@/lib/categories-ui";
 import { useApi } from "@/lib/client/api";
+import { useMounted, useQueryState } from "@/lib/client/hooks";
 import { useSettings } from "@/lib/client/settings";
 import type { BreakdownResponse, DailyResponse, LocationsResponse } from "@/lib/client/types";
 import { addMonths } from "@/lib/dates";
-import { money, monthLabel, percent, signedPercent, tidyName } from "@/lib/format";
+import { money, monthLabel, percent, plural, signedPercent, tidyName } from "@/lib/format";
 
 function currentMonth() {
   const d = new Date();
@@ -21,10 +22,20 @@ function currentMonth() {
 }
 
 export default function SpendingPage() {
+  return (
+    <Suspense>
+      <Spending />
+    </Suspense>
+  );
+}
+
+function Spending() {
   const { settings } = useSettings();
   const budget = settings.monthly_budget;
-  const [month, setMonth] = useState(currentMonth);
-  const [mapDays, setMapDays] = useState<"30" | "90" | "365">("90");
+  // The current month depends on the viewer's clock, so the label waits for mount.
+  const mounted = useMounted();
+  const [month, setMonth] = useQueryState<string>("month", currentMonth(), (v) => /^\d{4}-(0[1-9]|1[0-2])$/.test(v) && v <= currentMonth());
+  const [mapDays, setMapDays] = useQueryState<"30" | "90" | "365">("map", "90", ["30", "90", "365"]);
   const { data, isLoading } = useApi<BreakdownResponse>(`/api/spending/breakdown?month=${month}`);
   const { data: daily } = useApi<DailyResponse>("/api/spending/daily?days=182");
   const { data: places } = useApi<LocationsResponse>(`/api/spending/locations?days=${mapDays}`);
@@ -43,7 +54,9 @@ export default function SpendingPage() {
           <button aria-label="Previous month" onClick={() => setMonth(addMonths(`${month}-01`, -1).slice(0, 7))} className="grid size-9 place-items-center rounded-full hover:bg-line">
             <ChevronLeft className="size-4" />
           </button>
-          <span className="min-w-36 text-center text-sm font-medium">{monthLabel(month, "long")}</span>
+          <span className="min-w-36 text-center text-sm font-medium" aria-live="polite">
+            {mounted ? monthLabel(month, "long") : "…"}
+          </span>
           <button
             aria-label="Next month"
             disabled={isCurrent}
@@ -129,7 +142,7 @@ export default function SpendingPage() {
                         <span className="min-w-0 flex-1">
                           <span className="block truncate font-medium">{name}</span>
                           <span className="block truncate text-sm text-muted">
-                            {m.count} purchase{m.count === 1 ? "" : "s"} · {categoryLabel(m.category)}
+                            {plural(m.count, "purchase")} · {categoryLabel(m.category)}
                           </span>
                         </span>
                         <span className="font-medium tabular">{money(m.total)}</span>
@@ -165,7 +178,8 @@ export default function SpendingPage() {
                           <span className="flex items-baseline gap-3">
                             {change !== null ? (
                               <span className={cx("text-xs tabular", change > 0 ? "text-ink" : "text-brand-ink")}>
-                                {change > 0 ? "▲" : "▼"} {percent(Math.abs(change))}
+                                <span aria-hidden="true">{change > 0 ? "▲" : "▼"}</span>
+                                <span className="sr-only">{change > 0 ? "up" : "down"}</span> {percent(Math.abs(change))}
                               </span>
                             ) : (
                               <span className="text-xs text-faint">new</span>
@@ -209,6 +223,7 @@ export default function SpendingPage() {
                 <Segmented
                   dark
                   size="sm"
+                  label="Map period"
                   options={[
                     { value: "30", label: "30D" },
                     { value: "90", label: "90D" },
@@ -224,7 +239,7 @@ export default function SpendingPage() {
           )}
           {places && places.unknown.total > 0 ? (
             <p className="mt-4 text-xs text-white/40">
-              {money(places.unknown.total)} across {places.unknown.count} purchases had no location from the bank.
+              {money(places.unknown.total)} across {plural(places.unknown.count, "purchase")} had no location from the bank.
             </p>
           ) : null}
         </Card>

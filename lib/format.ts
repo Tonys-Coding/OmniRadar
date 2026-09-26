@@ -1,8 +1,14 @@
 // Display formatting shared by every page.
 
-const usd = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" });
-const usdWhole = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
-const usdCompact = new Intl.NumberFormat("en-US", {
+/**
+ * One locale for every number and date. Fixed (rather than the browser's) so
+ * server-rendered markup always matches the client; OmniRadar is USD-only.
+ */
+export const LOCALE = "en-US";
+
+const usd = new Intl.NumberFormat(LOCALE, { style: "currency", currency: "USD" });
+const usdWhole = new Intl.NumberFormat(LOCALE, { style: "currency", currency: "USD", maximumFractionDigits: 0 });
+const usdCompact = new Intl.NumberFormat(LOCALE, {
   style: "currency",
   currency: "USD",
   notation: "compact",
@@ -39,11 +45,34 @@ export function txnAmount(plaidAmount: number): string {
   return `${plaidAmount < 0 ? "+" : "-"}${usd.format(Math.abs(plaidAmount))}`;
 }
 
+const percentFormats = new Map<string, Intl.NumberFormat>();
+function percentFormat(digits: number, signed: boolean) {
+  const key = `${digits}${signed}`;
+  let f = percentFormats.get(key);
+  if (!f) {
+    f = new Intl.NumberFormat(LOCALE, {
+      style: "percent",
+      minimumFractionDigits: digits,
+      maximumFractionDigits: digits,
+      signDisplay: signed ? "exceptZero" : "auto",
+    });
+    percentFormats.set(key, f);
+  }
+  return f;
+}
+
 export const percent = (n: number | null | undefined, digits = 0) =>
-  n === null || n === undefined ? "-" : `${(n * 100).toFixed(digits)}%`;
+  n === null || n === undefined ? "-" : percentFormat(digits, false).format(n);
 
 export const signedPercent = (n: number | null | undefined, digits = 0) =>
-  n === null || n === undefined ? "-" : `${n > 0 ? "+" : ""}${(n * 100).toFixed(digits)}%`;
+  n === null || n === undefined ? "-" : percentFormat(digits, true).format(n);
+
+const oneDecimal = new Intl.NumberFormat(LOCALE, { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+/** "1.4×" */
+export const times = (n: number) => `${oneDecimal.format(n)}×`;
+
+/** "1 purchase", "3 purchases", "2 cities" */
+export const plural = (n: number, one: string, many = `${one}s`) => `${n.toLocaleString(LOCALE)} ${n === 1 ? one : many}`;
 
 const parse = (iso: string) => new Date(`${iso.slice(0, 10)}T12:00:00`);
 const localToday = () => {
@@ -63,12 +92,20 @@ export function relativeDay(iso: string): string {
   if (diff === 1) return "Tomorrow";
   const d = parse(iso);
   const sameYear = d.getFullYear() === new Date().getFullYear();
-  return d.toLocaleDateString("en-US", sameYear ? { weekday: "short", month: "short", day: "numeric" } : { month: "short", day: "numeric", year: "numeric" });
+  return d.toLocaleDateString(LOCALE, sameYear ? { weekday: "short", month: "short", day: "numeric" } : { month: "short", day: "numeric", year: "numeric" });
 }
 
-export const shortDate = (iso: string) => parse(iso).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+export const shortDate = (iso: string) => parse(iso).toLocaleDateString(LOCALE, { month: "short", day: "numeric" });
+/** "Thursday, September 24, 2026" */
+export const fullDate = (iso: string) =>
+  parse(iso).toLocaleDateString(LOCALE, { weekday: "long", month: "long", day: "numeric", year: "numeric" });
+/** "Mo", "Tu", ... */
+export const weekdayShort = (iso: string) => parse(iso).toLocaleDateString(LOCALE, { weekday: "short" }).slice(0, 2);
 export const monthLabel = (yyyyMm: string, style: "short" | "long" = "short") =>
-  parse(`${yyyyMm}-01`).toLocaleDateString("en-US", { month: style, ...(style === "long" ? { year: "numeric" } : {}) });
+  parse(`${yyyyMm}-01`).toLocaleDateString(LOCALE, { month: style, ...(style === "long" ? { year: "numeric" } : {}) });
+/** A timestamp in the viewer's timezone: "Sep 24, 2026, 3:04 PM". Render after mount only. */
+export const dateTime = (iso: string, style: "date" | "datetime" = "datetime") =>
+  new Date(iso).toLocaleString(LOCALE, style === "date" ? { dateStyle: "long" } : { dateStyle: "medium", timeStyle: "short" });
 
 /** "in 3 days", "tomorrow", "today", "2 days ago" */
 export function dueLabel(iso: string): string {

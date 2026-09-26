@@ -1,7 +1,6 @@
 "use client";
 
 import { ArrowDownLeft, ArrowUpRight, Receipt, Search, X } from "lucide-react";
-import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import useSWRInfinite from "swr/infinite";
 import { PageHeader } from "@/components/shell/PageHeader";
@@ -10,8 +9,9 @@ import { TransactionRow } from "@/components/TransactionRow";
 import { BigMoney, Button, cx, EmptyState, ErrorNote, Logo, Pill, Segmented, Skeleton } from "@/components/ui";
 import { CATEGORY_LABEL, categoryLabel, detailedLabel } from "@/lib/categories-ui";
 import { api, refreshAll, useApi } from "@/lib/client/api";
+import { useQueryState } from "@/lib/client/hooks";
 import type { AccountsResponse, Transaction, TransactionsResponse } from "@/lib/client/types";
-import { money, relativeDay, tidyName } from "@/lib/format";
+import { money, plural, relativeDay, tidyName } from "@/lib/format";
 
 const PAGE = 50;
 const RANGES = [
@@ -38,13 +38,15 @@ function Select({ value, onChange, label, children }: { value: string; onChange:
         value={value}
         onChange={(e) => onChange(e.target.value)}
         className={cx(
-          "h-10 appearance-none rounded-full py-0 pr-9 pl-4 text-sm font-medium outline-none",
+          "h-10 appearance-none rounded-full py-0 pr-9 pl-4 text-sm font-medium outline-none ring-brand ring-offset-2 focus-visible:ring-2",
           value ? "bg-ink text-white" : "bg-surface text-ink",
         )}
       >
         {children}
       </select>
-      <span className={cx("pointer-events-none absolute top-1/2 right-3.5 -translate-y-1/2 text-xs", value ? "text-white" : "text-muted")}>▾</span>
+      <span aria-hidden="true" className={cx("pointer-events-none absolute top-1/2 right-3.5 -translate-y-1/2 text-xs", value ? "text-white" : "text-muted")}>
+        ▾
+      </span>
     </label>
   );
 }
@@ -106,35 +108,35 @@ function TransactionDetail({ t, onClose }: { t: Transaction; onClose: () => void
           setNotes(e.target.value);
           setSaved(false);
         }}
-        placeholder="Add a note, e.g. split with roommate"
+        placeholder="Add a note, e.g. split with roommate…"
         className="mt-2 h-24 w-full resize-none rounded-3xl bg-surface p-4 text-sm outline-none ring-brand focus:ring-2"
       />
-      <Button onClick={save} loading={saving} disabled={notes === (t.notes ?? "")} className="mt-3 w-full" size="lg">
-        {saved ? "Saved" : "Save note"}
+      <Button onClick={save} loading={saving} className="mt-3 w-full" size="lg">
+        Save note
       </Button>
+      <p role="status" className="mt-2 h-5 text-center text-sm text-muted">
+        {saved ? "Note saved" : ""}
+      </p>
     </Sheet>
   );
 }
 
 function TransactionsView() {
-  const router = useRouter();
-  const params = useSearchParams();
-  const [q, setQ] = useState(params.get("q") ?? "");
-  const [query, setQuery] = useState(params.get("q") ?? "");
-  const [direction, setDirection] = useState<"all" | "in" | "out">("all");
-  const [category, setCategory] = useState(params.get("category") ?? "");
-  const [accountId, setAccountId] = useState(params.get("account") ?? "");
-  const [range, setRange] = useState<RangeValue>("90");
+  // Every filter lives in the URL, so a filtered view can be reloaded or linked.
+  const [query, setQuery] = useQueryState<string>("q", "");
+  const [direction, setDirection] = useQueryState<"all" | "in" | "out">("direction", "all", ["all", "in", "out"]);
+  const [category, setCategory] = useQueryState<string>("category", "", (v) => /^[A-Z_]+$/.test(v));
+  const [accountId, setAccountId] = useQueryState<string>("account", "");
+  const [range, setRange] = useQueryState<RangeValue>("range", "90", RANGES.map((r) => r.value));
+  const [q, setQ] = useState<string>(query);
   const [selected, setSelected] = useState<Transaction | null>(null);
   const { data: accounts } = useApi<AccountsResponse>("/api/accounts");
 
-  // Follow ?q= when the header search is used while already on this page.
-  const urlQ = params.get("q") ?? "";
-  const [prevUrlQ, setPrevUrlQ] = useState(urlQ);
-  if (urlQ !== prevUrlQ) {
-    setPrevUrlQ(urlQ);
-    setQ(urlQ);
-    setQuery(urlQ);
+  // Follow ?q= when the header search (or Clear) changes it while on this page.
+  const [prevQuery, setPrevQuery] = useState(query);
+  if (query !== prevQuery) {
+    setPrevQuery(query);
+    setQ(query);
   }
 
   const baseQuery = useMemo(() => {
@@ -188,22 +190,19 @@ function TransactionsView() {
 
   function clearFilters() {
     setQ("");
-    setQuery("");
-    setDirection("all");
-    setCategory("");
-    setAccountId("");
-    router.replace("/transactions");
+    window.history.replaceState(null, "", "/transactions");
   }
 
   return (
     <>
-      <PageHeader hideSearch title="Transactions" subtitle={data ? `${total.toLocaleString()} transactions` : "Loading…"} />
+      <PageHeader hideSearch title="Transactions" subtitle={data ? plural(total, "transaction") : "Loading…"} />
 
       <div className="mt-5 max-w-5xl px-4 sm:px-6 lg:mt-7 lg:px-8">
         {/* Filters */}
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
           <form
-            className="flex h-11 items-center gap-2 rounded-full bg-surface px-4 lg:w-80 lg:shrink-0"
+            role="search"
+            className="flex h-11 items-center gap-2 rounded-full bg-surface px-4 ring-brand focus-within:ring-2 lg:w-80 lg:shrink-0"
             onSubmit={(e) => {
               e.preventDefault();
               setQuery(q.trim());
@@ -211,21 +210,31 @@ function TransactionsView() {
           >
             <Search className="size-4 shrink-0 text-muted" />
             <input
+              type="search"
+              name="q"
+              autoComplete="off"
+              spellCheck={false}
               value={q}
               onChange={(e) => setQ(e.target.value)}
               onBlur={() => setQuery(q.trim())}
-              placeholder="Search merchant or description"
+              placeholder="Search merchant or description…"
               aria-label="Search transactions"
               className="w-full min-w-0 bg-transparent text-sm outline-none"
             />
             {q ? (
-              <button type="button" aria-label="Clear search" onClick={() => (setQ(""), setQuery(""))}>
-                <X className="size-4 text-muted" />
+              <button
+                type="button"
+                aria-label="Clear search"
+                onClick={() => (setQ(""), setQuery(""))}
+                className="grid size-7 shrink-0 place-items-center rounded-full text-muted hover:bg-line hover:text-ink"
+              >
+                <X className="size-4" />
               </button>
             ) : null}
           </form>
           <div className="no-scrollbar -mx-4 flex gap-2 overflow-x-auto px-4 lg:mx-0 lg:px-0">
             <Segmented
+              label="Money direction"
               options={[
                 { value: "all", label: "All" },
                 { value: "out", label: "Money out" },
@@ -260,7 +269,7 @@ function TransactionsView() {
             </Select>
             {filtered ? (
               <Button variant="ghost" onClick={clearFilters} className="shrink-0">
-                Clear
+                Clear filters
               </Button>
             ) : null}
           </div>
@@ -281,7 +290,7 @@ function TransactionsView() {
               </p>
               <BigMoney value={pageOut} className="mt-1 block text-2xl" />
             </div>
-            {hasMore ? <p className="col-span-2 -mt-1 text-xs text-faint">Totals for the {transactions.length} transactions loaded so far</p> : null}
+            {hasMore ? <p className="col-span-2 -mt-1 text-xs text-faint">Totals for the {plural(transactions.length, "transaction")} loaded so far</p> : null}
           </div>
         ) : null}
 
@@ -307,14 +316,14 @@ function TransactionsView() {
             </EmptyState>
           ) : (
             groups.map((g) => (
-              <section key={g.date} aria-label={relativeDay(g.date)}>
-                <h3 className="sticky top-0 z-10 -mx-1 flex justify-between bg-canvas/95 px-1 py-2 text-sm backdrop-blur">
+              <section key={g.date} aria-label={relativeDay(g.date)} className="[contain-intrinsic-size:auto_320px] [content-visibility:auto]">
+                <h2 className="sticky top-0 z-10 -mx-1 flex justify-between bg-canvas/95 px-1 py-2 text-sm backdrop-blur">
                   <span className="font-medium">{relativeDay(g.date)}</span>
                   <span className={cx("tabular", g.net > 0 ? "text-brand-ink" : "text-muted")}>
                     {g.net > 0 ? "+" : "-"}
                     {money(Math.abs(g.net))}
                   </span>
-                </h3>
+                </h2>
                 <div className="flex flex-col">
                   {g.items.map((t) => (
                     <TransactionRow key={t.id} t={t} showDate={false} onClick={() => setSelected(t)} />

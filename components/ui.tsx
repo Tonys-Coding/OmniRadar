@@ -61,27 +61,31 @@ export function BigMoney({ value, className, centsClassName }: { value: number; 
   );
 }
 
+/** A row of mutually exclusive options (a toggle group of pressed buttons). */
 export function Segmented<T extends string>({
   options,
   value,
   onChange,
   dark,
   size = "md",
+  label,
 }: {
   options: readonly T[] | { value: T; label: string }[];
   value: T;
   onChange: (v: T) => void;
   dark?: boolean;
   size?: "sm" | "md";
+  /** What the options choose between, for screen readers ("Chart range"). */
+  label?: string;
 }) {
   const items = options.map((o) => (typeof o === "string" ? { value: o, label: o } : o));
   return (
-    <div className={cx("inline-flex shrink-0 rounded-full p-1", dark ? "bg-white/8" : "bg-surface")} role="tablist">
+    <div className={cx("inline-flex shrink-0 rounded-full p-1", dark ? "bg-white/8" : "bg-surface")} role="group" aria-label={label}>
       {items.map((o) => (
         <button
           key={o.value}
-          role="tab"
-          aria-selected={o.value === value}
+          type="button"
+          aria-pressed={o.value === value}
           onClick={() => onChange(o.value)}
           className={cx(
             "rounded-full font-medium whitespace-nowrap transition-colors",
@@ -124,6 +128,7 @@ export function Button({
   const sizes = { sm: "h-8 px-3 text-xs", md: "h-10 px-4 text-sm", lg: "h-13 px-6 text-[15px]" };
   return (
     <button
+      type="button"
       {...props}
       disabled={props.disabled || loading}
       className={cx(
@@ -199,6 +204,10 @@ export function Logo({
       <img
         src={src}
         alt=""
+        width={size}
+        height={size}
+        loading="lazy"
+        decoding="async"
         style={style}
         onError={() => setFailed(true)}
         className={cx("shrink-0 rounded-full bg-white object-cover ring-1 ring-line", className)}
@@ -230,11 +239,15 @@ export function EmptyState({ icon, title, children }: { icon?: React.ReactNode; 
 }
 
 export function ErrorNote({ error, onRetry }: { error: unknown; onRetry?: () => void }) {
+  const message = error instanceof Error ? error.message : "Something went wrong loading this.";
   return (
-    <div className="flex items-center justify-between gap-3 rounded-2xl bg-danger/8 px-4 py-3 text-sm text-danger">
-      <span>{error instanceof Error ? error.message : "Something went wrong"}</span>
+    <div role="alert" className="flex items-center justify-between gap-3 rounded-2xl bg-danger/8 px-4 py-3 text-sm text-danger">
+      <span>
+        {message}
+        {onRetry ? " Check your connection, then retry." : " Refresh the page to try again."}
+      </span>
       {onRetry ? (
-        <button onClick={onRetry} className="font-medium underline underline-offset-2">
+        <button type="button" onClick={onRetry} className="shrink-0 font-medium underline underline-offset-2 hover:no-underline">
           Retry
         </button>
       ) : null}

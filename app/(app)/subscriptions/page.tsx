@@ -1,15 +1,16 @@
 "use client";
 
 import { CalendarRange, Repeat, Sparkles } from "lucide-react";
-import { useState } from "react";
+import { Suspense } from "react";
 import { AllocationBar } from "@/components/charts/AllocationBar";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { StreamMenu } from "@/components/StreamMenu";
 import { BigMoney, Card, CardHeader, cx, EmptyState, IconChip, Logo, Pill, Segmented, Skeleton } from "@/components/ui";
 import { colorAt } from "@/lib/categories-ui";
 import { useApi } from "@/lib/client/api";
+import { useQueryState } from "@/lib/client/hooks";
 import type { RecurringResponse, Stream, SubscriptionsResponse } from "@/lib/client/types";
-import { dueLabel, FREQUENCY_LABEL, money, percent, relativeDay, shortDate, tidyName } from "@/lib/format";
+import { dueLabel, FREQUENCY_LABEL, money, percent, plural, relativeDay, shortDate, tidyName } from "@/lib/format";
 
 function SubscriptionRow({ s, share, color }: { s: Stream; share?: number; color?: string }) {
   const name = tidyName(s.merchant_name ?? s.description);
@@ -39,8 +40,16 @@ function SubscriptionRow({ s, share, color }: { s: Stream; share?: number; color
 }
 
 export default function SubscriptionsPage() {
+  return (
+    <Suspense>
+      <Subscriptions />
+    </Suspense>
+  );
+}
+
+function Subscriptions() {
   const { data, isLoading } = useApi<SubscriptionsResponse>("/api/subscriptions");
-  const [view, setView] = useState<"inactive" | "hidden">("inactive");
+  const [view, setView] = useQueryState<"inactive" | "hidden">("list", "inactive", ["inactive", "hidden"]);
   const { data: all } = useApi<RecurringResponse>("/api/recurring?direction=outflow&include_inactive=true&include_ignored=true");
 
   const subs = data?.subscriptions ?? [];
@@ -55,8 +64,8 @@ export default function SubscriptionsPage() {
       <PageHeader title="Subscriptions" subtitle="Everything that charges you on repeat" />
       <div className="mt-5 grid animate-fade-up grid-cols-1 gap-4 px-4 sm:px-6 md:grid-cols-3 lg:mt-7 lg:px-8">
         {[
-          { icon: <Repeat />, title: "Monthly cost", value: totals?.monthly, sub: `${totals?.count ?? 0} active subscriptions` },
-          { icon: <CalendarRange />, title: "Yearly cost", value: totals?.yearly, sub: "At today's prices" },
+          { icon: <Repeat />, title: "Monthly cost", value: totals?.monthly, sub: plural(totals?.count ?? 0, "active subscription") },
+          { icon: <CalendarRange />, title: "Yearly cost", value: totals?.yearly, sub: "At today’s prices" },
           {
             icon: <Sparkles />,
             title: "Next charge",
@@ -86,7 +95,7 @@ export default function SubscriptionsPage() {
             <Skeleton className="mt-5 h-64 w-full" />
           ) : subs.length ? (
             <>
-              <AllocationBar className="mt-5" values={subs.map((s) => s.monthly_amount)} />
+              <AllocationBar label="Monthly cost by subscription" className="mt-5" values={subs.map((s) => s.monthly_amount)} />
               <ul className="mt-3 divide-y divide-line">
                 {subs.map((s, i) => (
                   <SubscriptionRow key={s.id} s={s} share={totals?.monthly ? s.monthly_amount / totals.monthly : undefined} color={colorAt(i)} />
@@ -106,6 +115,7 @@ export default function SubscriptionsPage() {
             action={
               <Segmented
                 size="sm"
+                label="Which list to show"
                 options={[
                   { value: "inactive", label: `Stopped ${inactive.length}` },
                   { value: "hidden", label: `Hidden ${hidden.length}` },
@@ -117,7 +127,7 @@ export default function SubscriptionsPage() {
           />
           <p className="mt-3 text-sm text-muted">
             {view === "inactive"
-              ? "Subscriptions that haven't charged when expected. Check they're really cancelled."
+              ? "Subscriptions that haven’t charged when expected. Check they’re really cancelled."
               : "Charges you marked as not recurring."}
           </p>
           {secondary.length ? (

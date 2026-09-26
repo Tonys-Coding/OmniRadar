@@ -38,6 +38,12 @@
   - layout: a dark frame around a white rounded canvas; cards at 28px radius
 - **Charts:** hand-written SVG. No chart library.
 - **Authentication:** Supabase Auth with `@supabase/ssr`. `proxy.ts` refreshes the session and redirects signed-out visitors to `/login`. A revoked session goes through `/api/auth/expired` to clear its cookies, which prevents a redirect loop.
+- **UI conventions:**
+  - Put filter, range, and tab state in the URL with `useQueryState` (`lib/client/hooks.ts`). It uses `history.replaceState`, so there's no server round trip; pages that use it wrap their content in `<Suspense>`.
+  - Anything that depends on the viewer's clock or timezone renders only after `useMounted()`, because the server runs in UTC.
+  - Format numbers and dates with `lib/format.ts` (`LOCALE`, `percent`, `plural`, `fullDate`, `dateTime`). Never hard-code "en-US" or `toFixed` in components.
+  - Every interactive chart must also work from the keyboard. Give `Segmented` a `label`, and give `AllocationBar` a `label`.
+  - Copy uses curly apostrophes (’), a trailing "…" on loading text and placeholders, and sentence case.
 - **Money sign convention:** Plaid's: **positive amount = money out, negative = money in.** The UI flips it for display (`txnAmount`).
 
 ## Critical Rules

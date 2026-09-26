@@ -23,7 +23,8 @@ import { Button, Card, cx, Logo, Pill, Segmented, Switch } from "@/components/ui
 import { api, refreshAll, useApi } from "@/lib/client/api";
 import { nameOf, useSettings } from "@/lib/client/settings";
 import type { ItemsResponse, SyncResult } from "@/lib/client/types";
-import { money, timeAgo } from "@/lib/format";
+import { useMounted } from "@/lib/client/hooks";
+import { dateTime, money, plural, timeAgo } from "@/lib/format";
 import { RANGES } from "@/lib/settings";
 
 const SECTIONS = [
@@ -80,8 +81,21 @@ function Row({ title, description, children }: { title: string; description?: Re
 const inputClass = "h-10 rounded-full bg-surface px-4 text-sm outline-none ring-brand transition focus:bg-white focus:ring-2";
 
 /** Dollar amount input that commits on blur or Enter. */
-function MoneyInput({ value, onCommit, label, placeholder }: { value: number | null; onCommit: (v: number | null) => void; label: string; placeholder?: string }) {
+function MoneyInput({
+  name,
+  value,
+  onCommit,
+  label,
+  placeholder = "0.00…",
+}: {
+  name: string;
+  value: number | null;
+  onCommit: (v: number | null) => void;
+  label: string;
+  placeholder?: string;
+}) {
   const [text, setText] = useState(value === null ? "" : String(value));
+  const [invalid, setInvalid] = useState(false);
   const [prev, setPrev] = useState(value);
   if (value !== prev) {
     setPrev(value);
@@ -91,26 +105,39 @@ function MoneyInput({ value, onCommit, label, placeholder }: { value: number | n
     const cleaned = text.replace(/[$,\s]/g, "");
     const n = cleaned === "" ? null : Number(cleaned);
     if (n !== null && (!Number.isFinite(n) || n < 0)) {
-      setText(value === null ? "" : String(value));
+      setInvalid(true);
       return;
     }
+    setInvalid(false);
     const rounded = n === null ? null : Math.round(n * 100) / 100;
     if (rounded !== value) onCommit(rounded);
   }
+  const errorId = `${name}-error`;
   return (
-    <label className="relative">
-      <span className="sr-only">{label}</span>
-      <span className="pointer-events-none absolute top-1/2 left-4 -translate-y-1/2 text-sm text-muted">$</span>
-      <input
-        inputMode="decimal"
-        value={text}
-        placeholder={placeholder}
-        onChange={(e) => setText(e.target.value)}
-        onBlur={commit}
-        onKeyDown={(e) => e.key === "Enter" && (e.currentTarget as HTMLInputElement).blur()}
-        className={cx(inputClass, "w-32 pl-8 tabular")}
-      />
-    </label>
+    <div className="flex flex-col items-end gap-1">
+      <label className="relative">
+        <span className="sr-only">{label}</span>
+        <span aria-hidden="true" className="pointer-events-none absolute top-1/2 left-4 -translate-y-1/2 text-sm text-muted">
+          $
+        </span>
+        <input
+          name={name}
+          inputMode="decimal"
+          autoComplete="off"
+          value={text}
+          placeholder={placeholder}
+          aria-invalid={invalid}
+          aria-describedby={invalid ? errorId : undefined}
+          onChange={(e) => setText(e.target.value)}
+          onBlur={commit}
+          onKeyDown={(e) => e.key === "Enter" && (e.currentTarget as HTMLInputElement).blur()}
+          className={cx(inputClass, "w-32 pl-8 tabular", invalid && "ring-2 ring-danger")}
+        />
+      </label>
+      <p id={errorId} role="alert" className={invalid ? "text-xs text-danger" : "sr-only"}>
+        {invalid ? "Enter a positive amount, like 250" : ""}
+      </p>
+    </div>
   );
 }
 
@@ -138,6 +165,7 @@ function useToast() {
 
 function ProfileSection({ toast }: { toast: (m: string, t?: "ok" | "error") => void }) {
   const { profile, updateDisplayName } = useSettings();
+  const mounted = useMounted();
   const [name, setName] = useState(profile.display_name);
   const [saving, setSaving] = useState(false);
   const dirty = name.trim() !== profile.display_name;
@@ -169,11 +197,21 @@ function ProfileSection({ toast }: { toast: (m: string, t?: "ok" | "error") => v
           onSubmit={(e) => {
             e.preventDefault();
             if (dirty) void save();
+            else toast("No changes to save");
           }}
         >
-          <input value={name} maxLength={60} onChange={(e) => setName(e.target.value)} placeholder="Your name" aria-label="Display name" className={cx(inputClass, "w-full sm:w-56")} />
-          <Button type="submit" disabled={!dirty} loading={saving}>
-            Save
+          <input
+            name="display_name"
+            autoComplete="nickname"
+            value={name}
+            maxLength={60}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="e.g. Alex…"
+            aria-label="Display name"
+            className={cx(inputClass, "w-full sm:w-56")}
+          />
+          <Button type="submit" loading={saving}>
+            Save name
           </Button>
         </form>
       </Row>
@@ -181,7 +219,7 @@ function ProfileSection({ toast }: { toast: (m: string, t?: "ok" | "error") => v
         <span className="text-sm text-muted">{profile.email}</span>
       </Row>
       <Row title="Member since">
-        <span className="text-sm text-muted">{new Date(profile.created_at).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}</span>
+        <span className="text-sm text-muted">{mounted ? dateTime(profile.created_at, "date") : "…"}</span>
       </Row>
     </Section>
   );
@@ -200,6 +238,7 @@ function PreferencesSection() {
       <Row title="Week starts on" description="Used for “This week” on the dashboard.">
         <Segmented
           size="sm"
+          label="Week starts on"
           options={[
             { value: "monday", label: "Monday" },
             { value: "sunday", label: "Sunday" },
@@ -212,6 +251,7 @@ function PreferencesSection() {
         <div className="no-scrollbar max-w-full overflow-x-auto">
           <Segmented
             size="sm"
+            label="Default chart range"
             options={RANGES.map((r) => ({ value: r, label: r === "ALL" ? "All" : r }))}
             value={settings.default_range}
             onChange={(v) => update({ default_range: v })}
@@ -233,26 +273,27 @@ function AlertsSection({ toast }: { toast: (m: string, t?: "ok" | "error") => vo
   return (
     <Section id="alerts" title="Budget & alerts" description="Targets and the in-app notifications under the bell." icon={BellRing}>
       <Row title="Monthly spending budget" description="Tracked on the dashboard and Spending page. Leave empty for no budget.">
-        <MoneyInput label="Monthly budget" value={settings.monthly_budget} placeholder="None" onCommit={(v) => save({ monthly_budget: v }, v ? `Budget set to ${money(v)}` : "Budget removed")} />
+        <MoneyInput name="monthly_budget" label="Monthly budget" value={settings.monthly_budget} placeholder="None…" onCommit={(v) => save({ monthly_budget: v }, v ? `Budget set to ${money(v)}` : "Budget removed")} />
       </Row>
-      <Row title="Budget pace" description={settings.monthly_budget ? "Warn when you're on pace to overspend, and when you do." : "Set a budget to use this alert."}>
+      <Row title="Budget pace" description={settings.monthly_budget ? "Warn when you’re on pace to overspend, and when you do." : "Set a budget to use this alert."}>
         <Switch checked={a.budget_pace.enabled} disabled={!settings.monthly_budget} onChange={(v) => save({ alerts: { budget_pace: { enabled: v } } })} label="Budget pace alerts" />
       </Row>
       <Row title="Low balance" description="When a checking or savings account drops below this.">
-        <MoneyInput label="Low balance threshold" value={a.low_balance.threshold} onCommit={(v) => save({ alerts: { low_balance: { threshold: v ?? 0 } } })} />
+        <MoneyInput name="low_balance" label="Low balance threshold" value={a.low_balance.threshold} onCommit={(v) => save({ alerts: { low_balance: { threshold: v ?? 0 } } })} />
         <Switch checked={a.low_balance.enabled} onChange={(v) => save({ alerts: { low_balance: { enabled: v } } })} label="Low balance alerts" />
       </Row>
       <Row title="Large purchases" description="Any purchase in the last 7 days above this.">
-        <MoneyInput label="Large purchase threshold" value={a.large_transaction.threshold} onCommit={(v) => save({ alerts: { large_transaction: { threshold: v ?? 0 } } })} />
+        <MoneyInput name="large_purchase" label="Large purchase threshold" value={a.large_transaction.threshold} onCommit={(v) => save({ alerts: { large_transaction: { threshold: v ?? 0 } } })} />
         <Switch checked={a.large_transaction.enabled} onChange={(v) => save({ alerts: { large_transaction: { enabled: v } } })} label="Large purchase alerts" />
       </Row>
       <Row title="Bill reminders" description="Remind me before bills and subscriptions charge.">
-        <label>
+        <label className="relative">
           <span className="sr-only">Days before</span>
           <select
+            name="bill_reminder_days"
             value={a.bill_reminders.days_before}
             onChange={(e) => save({ alerts: { bill_reminders: { days_before: Number(e.target.value) } } })}
-            className={cx(inputClass, "appearance-none pr-8")}
+            className={cx(inputClass, "appearance-none pr-9 text-ink")}
           >
             {[0, 1, 2, 3, 5, 7, 14].map((d) => (
               <option key={d} value={d}>
@@ -260,6 +301,9 @@ function AlertsSection({ toast }: { toast: (m: string, t?: "ok" | "error") => vo
               </option>
             ))}
           </select>
+          <span aria-hidden="true" className="pointer-events-none absolute top-1/2 right-3.5 -translate-y-1/2 text-xs text-muted">
+            ▾
+          </span>
         </label>
         <Switch checked={a.bill_reminders.enabled} onChange={(v) => save({ alerts: { bill_reminders: { enabled: v } } })} label="Bill reminders" />
       </Row>
@@ -278,7 +322,7 @@ function ConnectionsSection({ toast }: { toast: (m: string, t?: "ok" | "error") 
     try {
       const { results } = await api.post<{ results: SyncResult[] }>("/api/sync");
       const failed = results.filter((r) => r.error).length;
-      toast(failed ? `${failed} bank(s) failed to sync` : `Synced ${results.length} bank(s)`, failed ? "error" : "ok");
+      toast(failed ? `${plural(failed, "bank")} failed to sync. Try again, or fix the connection on Accounts.` : `Synced ${plural(results.length, "bank")}`, failed ? "error" : "ok");
       await refreshAll();
     } finally {
       setSyncing(false);
@@ -294,7 +338,7 @@ function ConnectionsSection({ toast }: { toast: (m: string, t?: "ok" | "error") 
             <div className="min-w-0 flex-1">
               <p className="truncate font-medium">{i.institution_name ?? "Bank"}</p>
               <p className="text-sm text-muted">
-                {i.accounts.length} account{i.accounts.length === 1 ? "" : "s"} · synced {timeAgo(i.last_synced_at)}
+                {plural(i.accounts.length, "account")} · synced {timeAgo(i.last_synced_at)}
               </p>
             </div>
             {i.status === "good" ? <Pill tone="brand">Connected</Pill> : <Pill tone="danger">Needs attention</Pill>}
@@ -327,6 +371,8 @@ function ConnectionsSection({ toast }: { toast: (m: string, t?: "ok" | "error") 
 
 function SecuritySection({ toast }: { toast: (m: string, t?: "ok" | "error") => void }) {
   const { profile } = useSettings();
+  const mounted = useMounted();
+  const [confirmSignOut, setConfirmSignOut] = useState(false);
   const [current, setCurrent] = useState("");
   const [next, setNext] = useState("");
   const [confirm, setConfirm] = useState("");
@@ -334,9 +380,21 @@ function SecuritySection({ toast }: { toast: (m: string, t?: "ok" | "error") => 
   const [saving, setSaving] = useState(false);
   const mismatch = confirm.length > 0 && next !== confirm;
 
-  async function changePassword(e: React.FormEvent) {
+  async function changePassword(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    if (next !== confirm) return;
+    const form = e.currentTarget;
+    const firstError = !current ? "current_password" : next.length < 10 ? "new_password" : next !== confirm ? "confirm_password" : null;
+    if (firstError) {
+      setError(
+        firstError === "current_password"
+          ? "Enter your current password."
+          : firstError === "new_password"
+            ? "Use at least 10 characters with a letter and a number."
+            : "The new passwords don’t match.",
+      );
+      form.querySelector<HTMLInputElement>(`[name=${firstError}]`)?.focus();
+      return;
+    }
     setSaving(true);
     setError(null);
     try {
@@ -355,37 +413,76 @@ function SecuritySection({ toast }: { toast: (m: string, t?: "ok" | "error") => 
 
   return (
     <Section id="security" title="Security" description="Password and sessions." icon={KeyRound}>
-      <form onSubmit={changePassword} className="py-4">
+      <form onSubmit={changePassword} noValidate className="py-4">
         <p className="font-medium">Change password</p>
-        <p className="text-sm text-muted">At least 10 characters with a letter and a number.</p>
+        <p id="password-rules" className="text-sm text-muted">At least 10 characters with a letter and a number.</p>
         <div className="mt-3 grid gap-2 sm:grid-cols-3">
-          <input type="password" autoComplete="current-password" required placeholder="Current password" aria-label="Current password" value={current} onChange={(e) => setCurrent(e.target.value)} className={inputClass} />
-          <input type="password" autoComplete="new-password" required minLength={10} placeholder="New password" aria-label="New password" value={next} onChange={(e) => setNext(e.target.value)} className={inputClass} />
           <input
             type="password"
+            name="current_password"
+            autoComplete="current-password"
+            required
+            placeholder="Current password…"
+            aria-label="Current password"
+            aria-describedby="password-error"
+            value={current}
+            onChange={(e) => setCurrent(e.target.value)}
+            className={inputClass}
+          />
+          <input
+            type="password"
+            name="new_password"
             autoComplete="new-password"
             required
-            placeholder="Confirm new password"
+            minLength={10}
+            placeholder="New password…"
+            aria-label="New password"
+            aria-describedby="password-rules password-error"
+            value={next}
+            onChange={(e) => setNext(e.target.value)}
+            className={inputClass}
+          />
+          <input
+            type="password"
+            name="confirm_password"
+            autoComplete="new-password"
+            required
+            placeholder="Confirm new password…"
             aria-label="Confirm new password"
+            aria-describedby="password-error"
+            aria-invalid={mismatch}
             value={confirm}
             onChange={(e) => setConfirm(e.target.value)}
             className={cx(inputClass, mismatch && "ring-2 ring-danger")}
           />
         </div>
-        {error || mismatch ? <p className="mt-2 text-sm text-danger">{mismatch ? "Passwords don't match" : error}</p> : null}
-        <Button type="submit" className="mt-3" loading={saving} disabled={!current || !next || mismatch}>
+        <p id="password-error" role="alert" className={error || mismatch ? "mt-2 text-sm text-danger" : "sr-only"}>
+          {mismatch ? "The new passwords don’t match." : (error ?? "")}
+        </p>
+        <Button type="submit" className="mt-3" loading={saving}>
           Update password
         </Button>
       </form>
-      <Row title="Last sign-in" description={profile.last_sign_in_at ? new Date(profile.last_sign_in_at).toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" }) : "Unknown"}>
+      <Row title="Last sign-in" description={!mounted ? "…" : profile.last_sign_in_at ? dateTime(profile.last_sign_in_at) : "Unknown"}>
         <Button variant="secondary" onClick={() => signOut("local")}>
           <LogOut /> Sign out
         </Button>
       </Row>
       <Row title="Sign out everywhere" description="Ends every session on every device, including this one.">
-        <Button variant="secondary" onClick={() => signOut("global")}>
-          <Lock /> Sign out all devices
-        </Button>
+        {confirmSignOut ? (
+          <>
+            <Button variant="danger" onClick={() => signOut("global")}>
+              <Lock /> Yes, sign out everywhere
+            </Button>
+            <Button variant="ghost" onClick={() => setConfirmSignOut(false)}>
+              Cancel
+            </Button>
+          </>
+        ) : (
+          <Button variant="secondary" onClick={() => setConfirmSignOut(true)}>
+            <Lock /> Sign out all devices…
+          </Button>
+        )}
       </Row>
     </Section>
   );
@@ -400,7 +497,7 @@ function DataSection({ toast }: { toast: (m: string, t?: "ok" | "error") => void
     setDeleting(true);
     try {
       const { banks_removed } = await api.post<{ banks_removed: number }>("/api/settings/delete-data", { confirm: typed });
-      toast(`Deleted all data from ${banks_removed} bank(s)`);
+      toast(`Deleted all data from ${plural(banks_removed, "bank")}`);
       setConfirming(false);
       setTyped("");
       await refreshAll();
@@ -423,8 +520,8 @@ function DataSection({ toast }: { toast: (m: string, t?: "ok" | "error") => void
           <ShieldCheck className="size-4 text-brand-ink" /> How your data is protected
         </p>
         <ul className="mt-2 space-y-1.5 text-sm text-muted">
-          <li>• Bank passwords never touch OmniRadar: you sign in on your bank&apos;s own page through Plaid.</li>
-          <li>• Bank access tokens are encrypted (AES-256-GCM) and can&apos;t be read from the browser.</li>
+          <li>• Bank passwords never touch OmniRadar: you sign in on your bank’s own page through Plaid.</li>
+          <li>• Bank access tokens are encrypted (AES-256-GCM) and can’t be read from the browser.</li>
           <li>• Every table is locked to your account with row-level security.</li>
           <li>• Nothing is shared or sold. Data leaves only when you export it.</li>
         </ul>
@@ -439,7 +536,17 @@ function DataSection({ toast }: { toast: (m: string, t?: "ok" | "error") => void
           </p>
           {confirming ? (
             <div className="mt-3 flex flex-col gap-2 sm:flex-row">
-              <input value={typed} onChange={(e) => setTyped(e.target.value)} placeholder='Type "DELETE" to confirm' aria-label="Type DELETE to confirm" className={cx(inputClass, "bg-white sm:w-60")} />
+              <input
+                name="confirm_delete"
+                autoComplete="off"
+                autoCapitalize="characters"
+                spellCheck={false}
+                value={typed}
+                onChange={(e) => setTyped(e.target.value)}
+                placeholder="Type “DELETE” to confirm…"
+                aria-label="Type DELETE to confirm"
+                className={cx(inputClass, "bg-white sm:w-60")}
+              />
               <Button variant="danger" onClick={deleteAll} loading={deleting} disabled={typed !== "DELETE"}>
                 Delete everything
               </Button>

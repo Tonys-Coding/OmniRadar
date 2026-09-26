@@ -26,7 +26,8 @@ function LoginForm() {
       router.replace(next && next.startsWith("/") && !next.startsWith("//") ? next : "/");
       router.refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not sign in");
+      const reason = err instanceof Error ? err.message : "Could not sign in.";
+      setError(`${reason.replace(/\.?$/, ".")} Check your email and password, then try again.`);
       setLoading(false);
     }
   }
@@ -40,21 +41,39 @@ function LoginForm() {
       <label className="sr-only" htmlFor="email">
         Email
       </label>
-      <input id="email" type="email" autoComplete="email" required placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} className={input} />
+      <input
+        id="email"
+        name="email"
+        type="email"
+        inputMode="email"
+        autoComplete="email"
+        spellCheck={false}
+        autoCapitalize="none"
+        required
+        placeholder="you@example.com"
+        value={email}
+        onChange={(e) => setEmail(e.target.value)}
+        aria-describedby={error ? "login-error" : undefined}
+        className={input}
+      />
       <label className="sr-only" htmlFor="password">
         Password
       </label>
       <input
         id="password"
+        name="password"
         type="password"
         autoComplete="current-password"
         required
         placeholder="Password"
+        aria-describedby={error ? "login-error" : undefined}
         value={password}
         onChange={(e) => setPassword(e.target.value)}
         className={input}
       />
-      {error ? <p className="px-2 text-sm text-danger">{error}</p> : null}
+      <p id="login-error" role="alert" className={error ? "px-2 text-sm text-danger" : "sr-only"}>
+        {error}
+      </p>
       <Button type="submit" size="lg" loading={loading} className="mt-2 w-full">
         Sign in {loading ? null : <ArrowRight />}
       </Button>

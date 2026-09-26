@@ -49,6 +49,30 @@
 @layer base {
   html {
     -webkit-tap-highlight-color: transparent;
+    /* No double-tap-to-zoom delay on taps. */
+    touch-action: manipulation;
+  }
+  /* Phones: keep keyboard focus clear of the fixed bottom tab bar. */
+  @media (width < 64rem) {
+    html {
+      scroll-padding-bottom: 7rem;
+    }
+  }
+  h1,
+  h2,
+  h3 {
+    text-wrap: balance;
+  }
+  /* Reduced motion: no entrance, pulse, spin, lift, or fly-to animation. */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    ::before,
+    ::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
   }
   body {
     @apply bg-ink text-ink antialiased;

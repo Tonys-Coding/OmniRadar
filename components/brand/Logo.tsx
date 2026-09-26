@@ -43,6 +43,7 @@ export function Logo({ className, tone = "light" }: { className?: string; tone?:
       )}
       aria-label="OmniRadar"
       role="img"
+      translate="no"
     >
       <LogoMark title={null} className="size-[1.45em]" />
       <span aria-hidden="true">OmniRadar</span>

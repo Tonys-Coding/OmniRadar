@@ -145,8 +145,14 @@ function Frame({ sidebarExpanded, children }: { sidebarExpanded: boolean; childr
   const { settings } = useSettings();
   return (
     <div className={cx("min-h-dvh bg-ink lg:flex lg:gap-1 lg:p-3 lg:pl-1", settings.privacy_mode && "privacy")}>
+      <a
+        href="#main"
+        className="fixed top-3 left-3 z-[60] -translate-y-20 rounded-full bg-white px-4 py-2.5 text-sm font-medium text-ink shadow-lg focus-visible:translate-y-0"
+      >
+        Skip to content
+      </a>
       <Sidebar initialExpanded={sidebarExpanded} />
-      <main className="min-h-dvh min-w-0 flex-1 bg-canvas pb-28 lg:min-h-[calc(100dvh-24px)] lg:rounded-[var(--radius-canvas)] lg:pb-8">
+      <main id="main" tabIndex={-1} className="min-h-dvh outline-none min-w-0 flex-1 bg-canvas pb-28 lg:min-h-[calc(100dvh-24px)] lg:rounded-[var(--radius-canvas)] lg:pb-8">
         {children}
       </main>
       <MobileNav />

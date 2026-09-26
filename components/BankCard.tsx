@@ -146,7 +146,7 @@ export function BankCard({
           <NetworkLogo network={card.network} className="shrink-0 text-white" />
         ) : card.institution?.logo ? (
           // eslint-disable-next-line @next/next/no-img-element -- base64 bank logo from Plaid
-          <img src={card.institution.logo} alt="" className="size-7 shrink-0 rounded-full bg-white object-contain p-0.5" />
+          <img src={card.institution.logo} alt="" width={28} height={28} className="size-7 shrink-0 rounded-full bg-white object-contain p-0.5" />
         ) : null}
       </div>
 
@@ -182,7 +182,7 @@ export function BankCard({
 
   const classes = cx(
     "relative flex aspect-[1.586/1] min-w-0 flex-col justify-between overflow-hidden rounded-[22px] p-4 text-left text-white shadow-lg shadow-black/10 transition sm:p-5",
-    (href || onSelect) && "hover:-translate-y-0.5 hover:shadow-xl focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:outline-none",
+    (href || onSelect) && "hover:-translate-y-0.5 hover:shadow-xl motion-reduce:hover:translate-y-0 focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:outline-none",
     selected && "ring-2 ring-brand ring-offset-2 ring-offset-canvas",
     card.is_hidden && !selected && "opacity-60",
     className,

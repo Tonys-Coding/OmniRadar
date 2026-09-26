@@ -33,7 +33,7 @@ function SearchBox({ className }: { className?: string }) {
   return (
     <form
       role="search"
-      className={cx("flex h-11 items-center gap-2.5 rounded-full bg-surface px-4", className)}
+      className={cx("flex h-11 items-center gap-2.5 rounded-full bg-surface px-4 ring-brand focus-within:ring-2", className)}
       onSubmit={(e) => {
         e.preventDefault();
         router.push(q.trim() ? `/transactions?q=${encodeURIComponent(q.trim())}` : "/transactions");
@@ -41,9 +41,13 @@ function SearchBox({ className }: { className?: string }) {
     >
       <Search className="size-[18px] shrink-0 text-ink" strokeWidth={1.8} />
       <input
+        type="search"
+        name="q"
+        autoComplete="off"
+        spellCheck={false}
         value={q}
         onChange={(e) => setQ(e.target.value)}
-        placeholder="Search transactions"
+        placeholder="Search transactions…"
         aria-label="Search transactions"
         className="w-full min-w-0 bg-transparent text-[15px] outline-none placeholder:text-ink/70"
       />
@@ -119,8 +123,8 @@ function Notifications() {
               </button>
             ) : null}
           </div>
-          {alerts.length === 0 ? <p className="px-3 py-5 text-sm text-muted">You&apos;re all caught up.</p> : null}
-          <div className="max-h-[60dvh] overflow-y-auto">
+          {alerts.length === 0 ? <p className="px-3 py-5 text-sm text-muted">You’re all caught up.</p> : null}
+          <div className="max-h-[60dvh] overflow-y-auto overscroll-contain">
             {alerts.map((a) => {
               const Icon = ALERT_ICON[a.kind];
               return (
@@ -136,7 +140,11 @@ function Notifications() {
                   <span className="min-w-0 flex-1 text-sm">
                     <span className="flex items-center gap-1.5 font-medium">
                       {a.title}
-                      {!seen.includes(a.id) ? <span className="size-1.5 shrink-0 rounded-full bg-brand" /> : null}
+                      {!seen.includes(a.id) ? (
+                        <span className="size-1.5 shrink-0 rounded-full bg-brand">
+                          <span className="sr-only">Unread</span>
+                        </span>
+                      ) : null}
                     </span>
                     <span className="block text-muted">{a.body}</span>
                   </span>

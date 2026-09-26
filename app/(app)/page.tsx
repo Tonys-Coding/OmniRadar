@@ -2,7 +2,7 @@
 
 import { ArrowRight, CalendarDays, CalendarRange, CreditCard, Landmark, Plus, Receipt, RefreshCw } from "lucide-react";
 import Link from "next/link";
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import { BankCard } from "@/components/BankCard";
 import { BillCard } from "@/components/BillCard";
 import { AllocationBar } from "@/components/charts/AllocationBar";
@@ -26,11 +26,10 @@ import type {
   Summary,
   TransactionsResponse,
 } from "@/lib/client/types";
+import { useMounted, useQueryState } from "@/lib/client/hooks";
 import { nameOf, useSettings } from "@/lib/client/settings";
-import { money, monthLabel, percent, shortDate, timeAgo } from "@/lib/format";
-import type { Range } from "@/lib/settings";
-
-const RANGES = ["1W", "1M", "3M", "6M", "1Y", "ALL"] as const;
+import { money, monthLabel, percent, plural, shortDate, timeAgo, times, weekdayShort } from "@/lib/format";
+import { RANGES, type Range } from "@/lib/settings";
 
 function StatCard({
   icon,
@@ -65,7 +64,14 @@ function StatCard({
             {badge}
           </div>
           {progress !== undefined && progress !== null ? (
-            <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-surface" role="progressbar" aria-valuenow={Math.round(progress * 100)} aria-valuemin={0} aria-valuemax={100}>
+            <div
+              className="mt-3 h-1.5 overflow-hidden rounded-full bg-surface"
+              role="progressbar"
+              aria-label="Monthly budget used"
+              aria-valuenow={Math.round(progress * 100)}
+              aria-valuemin={0}
+              aria-valuemax={100}
+            >
               <div className={cx("h-full rounded-full", progress > 1 ? "bg-danger" : progress > 0.85 ? "bg-ink" : "bg-brand")} style={{ width: `${Math.min(100, progress * 100)}%` }} />
             </div>
           ) : null}
@@ -78,8 +84,8 @@ function StatCard({
 
 function BalanceHero() {
   const { settings } = useSettings();
-  const [range, setRange] = useState<Range>(settings.default_range);
-  const [metric, setMetric] = useState<"cash" | "net_worth">("cash");
+  const [range, setRange] = useQueryState<Range>("range", settings.default_range, RANGES);
+  const [metric, setMetric] = useQueryState<"cash" | "net_worth">("chart", "cash", ["cash", "net_worth"]);
   const { data, isLoading } = useApi<NetWorthResponse>(`/api/net-worth?range=${range}`);
   const series = (data?.series ?? []).map((p) => ({ x: p.date, y: p[metric] }));
   const long = range === "6M" || range === "1Y" || range === "ALL";
@@ -95,6 +101,7 @@ function BalanceHero() {
           <Segmented
             dark
             size="sm"
+            label="Balance to chart"
             options={[
               { value: "cash", label: "Cash" },
               { value: "net_worth", label: "Net worth" },
@@ -104,7 +111,7 @@ function BalanceHero() {
           />
         </div>
         <div className="no-scrollbar -mx-1 max-w-full overflow-x-auto px-1">
-          <Segmented dark options={RANGES.map((r) => ({ value: r, label: r === "ALL" ? "All" : r }))} value={range} onChange={setRange} />
+          <Segmented dark label="Chart range" options={RANGES.map((r) => ({ value: r, label: r === "ALL" ? "All" : r }))} value={range} onChange={setRange} />
         </div>
       </div>
       {series.length > 1 ? (
@@ -175,7 +182,7 @@ function BalanceCard({ summary }: { summary?: Summary }) {
           </p>
 
           <p className="mt-7 mb-3 text-[15px]">Where it is</p>
-          <AllocationBar values={cash.map((a) => Math.max(0, a.current_balance ?? 0))} />
+          <AllocationBar label="Cash by account" values={cash.map((a) => Math.max(0, a.current_balance ?? 0))} />
           <ul className="mt-5 flex flex-col gap-3.5">
             {cash.map((a, i) => (
               <li key={a.id} className="flex items-center gap-2.5 text-[15px]">
@@ -211,12 +218,12 @@ function BalanceCard({ summary }: { summary?: Summary }) {
 }
 
 function CashflowCard({ summary }: { summary?: Summary }) {
-  const [period, setPeriod] = useState<"month" | "week">("month");
+  const [period, setPeriod] = useQueryState<"month" | "week">("flow", "month", ["month", "week"]);
   const groups =
     period === "month"
       ? (summary?.cashflow ?? []).map((m) => ({ label: monthLabel(m.month), income: m.income, spending: m.spending }))
       : (summary?.this_week.days ?? []).map((d) => ({
-          label: new Date(`${d.date}T12:00:00`).toLocaleDateString("en-US", { weekday: "short" }).slice(0, 2),
+          label: weekdayShort(d.date),
           income: d.income,
           spending: d.spending,
         }));
@@ -227,6 +234,7 @@ function CashflowCard({ summary }: { summary?: Summary }) {
         action={
           <Segmented
             size="sm"
+            label="Period"
             options={[
               { value: "month", label: "Months" },
               { value: "week", label: "This week" },
@@ -251,7 +259,7 @@ function CategoryCard({ summary }: { summary?: Summary }) {
       <CardHeader
         title="Spending by category"
         action={
-          <Link href="/spending" className="text-sm text-muted hover:text-ink">
+          <Link href="/spending" aria-label="View all spending by category" className="text-sm text-muted hover:text-ink">
             View all
           </Link>
         }
@@ -262,7 +270,7 @@ function CategoryCard({ summary }: { summary?: Summary }) {
             <p className="mt-4 text-sm text-muted">
               {monthLabel(summary.this_month.month, "long")} · <span className="text-ink tabular">{money(total)}</span>
             </p>
-            <AllocationBar className="mt-3" values={[...top.map((c) => c.total), rest]} />
+            <AllocationBar label="Spending by category" className="mt-3" values={[...top.map((c) => c.total), rest]} />
             <ul className="mt-5 flex flex-col gap-3">
               {top.map((c, i) => (
                 <li key={c.category} className="flex items-center gap-2.5 text-[15px]">
@@ -301,7 +309,7 @@ function MyCards() {
         }
         action={
           <div className="flex items-center gap-1">
-            <Link href="/cards" className="hidden px-3 text-sm text-muted hover:text-ink sm:block">
+            <Link href="/cards" aria-label="View all cards" className="hidden px-3 text-sm text-muted hover:text-ink sm:block">
               View all
             </Link>
             <ConnectBankButton variant="secondary" size="sm">
@@ -352,7 +360,7 @@ function UpcomingCard() {
         className="px-5 sm:px-6"
         title="Upcoming bills"
         action={
-          <Link href="/bills" className="text-sm text-muted hover:text-ink">
+          <Link href="/bills" aria-label="View all bills" className="text-sm text-muted hover:text-ink">
             View all
           </Link>
         }
@@ -360,11 +368,15 @@ function UpcomingCard() {
       {data ? (
         <>
           <p className="mt-4 px-5 text-sm text-muted sm:px-6">
-            <span className="text-ink tabular">{money(data.totals.amount)}</span> due in the next 30 days · {data.totals.count} charge
-            {data.totals.count === 1 ? "" : "s"}
+            <span className="text-ink tabular">{money(data.totals.amount)}</span> due in the next 30 days · {plural(data.totals.count, "charge")}
           </p>
           {data.bills.length ? (
-            <div className="no-scrollbar mt-4 flex snap-x gap-3 overflow-x-auto px-5 pb-1 sm:px-6">
+            <div
+              tabIndex={0}
+              role="region"
+              aria-label="Upcoming bills, scroll sideways for more"
+              className="no-scrollbar mt-4 flex snap-x gap-3 overflow-x-auto rounded-3xl px-5 pb-1 focus-visible:outline-offset-[-2px] sm:px-6"
+            >
               {data.bills.map((b, i) => (
                 <BillCard key={b.id} bill={b} featured={i === 0} />
               ))}
@@ -390,7 +402,7 @@ function RecentTransactions() {
       <CardHeader
         title="Recent transactions"
         action={
-          <Link href="/transactions" className="text-sm text-muted hover:text-ink">
+          <Link href="/transactions" aria-label="View all transactions" className="text-sm text-muted hover:text-ink">
             View all
           </Link>
         }
@@ -411,7 +423,7 @@ function RecentTransactions() {
 }
 
 function MapCard() {
-  const [days, setDays] = useState<"30" | "90" | "365">("90");
+  const [days, setDays] = useQueryState<"30" | "90" | "365">("map", "90", ["30", "90", "365"]);
   const { data } = useApi<LocationsResponse>(`/api/spending/locations?days=${days}`);
   return (
     <Card dark className="xl:col-span-12">
@@ -422,6 +434,7 @@ function MapCard() {
             <Segmented
               dark
               size="sm"
+              label="Map period"
               options={[
                 { value: "30", label: "30D" },
                 { value: "90", label: "90D" },
@@ -451,7 +464,7 @@ function ConnectFirstBank() {
           <p className="text-lg font-medium">Connect your first bank</p>
           <p className="text-sm text-white/60">Link checking, savings, and cards to fill your dashboard.</p>
         </div>
-        <Link href="/accounts" className="inline-flex h-11 items-center gap-2 rounded-full bg-white px-5 text-sm font-medium text-ink">
+        <Link href="/accounts" className="inline-flex h-11 items-center gap-2 rounded-full bg-white px-5 text-sm font-medium text-ink transition-colors hover:bg-brand-pale">
           <Plus className="size-4" /> Connect a bank <ArrowRight className="size-4" />
         </Link>
       </div>
@@ -459,13 +472,24 @@ function ConnectFirstBank() {
   );
 }
 
-function greeting() {
+/** Time-of-day greeting in the viewer's timezone; plain "Welcome back" until mounted (server time is UTC). */
+function greeting(mounted: boolean) {
+  if (!mounted) return "Welcome back";
   const h = new Date().getHours();
   return h < 12 ? "Good morning" : h < 18 ? "Good afternoon" : "Good evening";
 }
 
 export default function DashboardPage() {
+  return (
+    <Suspense>
+      <Dashboard />
+    </Suspense>
+  );
+}
+
+function Dashboard() {
   const { profile } = useSettings();
+  const mounted = useMounted();
   const { data: summary, isLoading } = useApi<Summary>("/api/summary?months=6");
   const budget = summary?.budget ?? null;
   const noBanks = summary && summary.connections.total === 0;
@@ -475,20 +499,20 @@ export default function DashboardPage() {
 
   return (
     <>
-      <PageHeader title="Dashboard" subtitle={`${greeting()}, ${nameOf(profile)}`} />
+      <PageHeader title="Dashboard" subtitle={`${greeting(mounted)}, ${nameOf(profile)}`} />
       <div className="mt-5 grid animate-fade-up grid-cols-1 gap-4 px-4 sm:px-6 md:grid-cols-2 lg:mt-7 lg:px-8 xl:grid-cols-12">
         {noBanks ? <ConnectFirstBank /> : null}
 
         <StatCard
           loading={isLoading}
           icon={<Receipt />}
-          title="Today's spending"
+          title="Today’s spending"
           value={summary?.today.spending ?? 0}
-          badge={todayVsAvg !== null ? <Pill>{todayVsAvg >= 1 ? `${todayVsAvg.toFixed(1)}× avg` : `${percent(1 - todayVsAvg)} under avg`}</Pill> : null}
+          badge={todayVsAvg !== null ? <Pill>{todayVsAvg >= 1 ? `${times(todayVsAvg)} avg` : `${percent(1 - todayVsAvg)} under avg`}</Pill> : null}
           sub={
             summary ? (
               <>
-                {summary.today.count} purchase{summary.today.count === 1 ? "" : "s"} · daily avg <span className="tabular">{money(summary.today.average_daily_spending)}</span>
+                {plural(summary.today.count, "purchase")} · daily avg <span className="tabular">{money(summary.today.average_daily_spending)}</span>
               </>
             ) : null
           }

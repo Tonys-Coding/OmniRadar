@@ -69,6 +69,18 @@ export function AreaChart({ data, height = 280, formatY, formatX, tickLabel, dar
     setHover(Math.max(0, Math.min(data.length - 1, Math.round(rel * (data.length - 1)))));
   }
 
+  // Keyboard: ←/→ step through points (Shift = a week), Home/End jump to the ends.
+  function onKeyDown(e: React.KeyboardEvent<SVGSVGElement>) {
+    const last = data.length - 1;
+    const from = hover ?? last;
+    const step = e.shiftKey ? 7 : 1;
+    const next =
+      e.key === "ArrowLeft" ? from - step : e.key === "ArrowRight" ? from + step : e.key === "Home" ? 0 : e.key === "End" ? last : null;
+    if (next === null) return;
+    e.preventDefault();
+    setHover(Math.max(0, Math.min(last, next)));
+  }
+
   const ink = dark ? "#ffffff" : "#121214";
   const tooltipText = data[active] ? `${formatY(data[active].y)}` : "";
   const tooltipDate = data[active] ? formatX(data[active].x) : "";
@@ -82,11 +94,14 @@ export function AreaChart({ data, height = 280, formatY, formatX, tickLabel, dar
           width={width}
           height={height}
           role="img"
-          aria-label={ariaLabel}
-          className="touch-pan-y overflow-visible"
+          aria-label={`${ariaLabel}, ${formatX(data[0]!.x)} to ${formatX(data[data.length - 1]!.x)}. Use the arrow keys to read values.`}
+          tabIndex={0}
+          className="touch-pan-y overflow-visible rounded-2xl focus-visible:outline-offset-4"
           onPointerMove={onMove}
           onPointerDown={onMove}
           onPointerLeave={() => setHover(null)}
+          onKeyDown={onKeyDown}
+          onBlur={() => setHover(null)}
         >
           <defs>
             <linearGradient id={gradientId} x1="0" x2="0" y1="0" y2="1">
@@ -126,6 +141,9 @@ export function AreaChart({ data, height = 280, formatY, formatX, tickLabel, dar
           ))}
         </svg>
       ) : null}
+      <p className="sr-only" aria-live="polite">
+        {hover !== null ? `${tooltipDate}: ${tooltipText}` : ""}
+      </p>
     </div>
   );
 }

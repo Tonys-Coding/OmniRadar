@@ -7,9 +7,11 @@ import { PageHeader } from "@/components/shell/PageHeader";
 import { StreamMenu } from "@/components/StreamMenu";
 import { BigMoney, Card, CardHeader, cx, EmptyState, IconChip, Logo, Skeleton } from "@/components/ui";
 import { useApi } from "@/lib/client/api";
+import { useMounted } from "@/lib/client/hooks";
+import { useSettings } from "@/lib/client/settings";
 import type { BillsResponse, RecurringResponse, Stream } from "@/lib/client/types";
 import { addDays, addMonths } from "@/lib/dates";
-import { daysFromToday, FREQUENCY_LABEL, money, moneyWhole, relativeDay, tidyName } from "@/lib/format";
+import { daysFromToday, FREQUENCY_LABEL, fullDate, money, moneyWhole, monthLabel, plural, relativeDay, tidyName } from "@/lib/format";
 import { occurrences } from "@/lib/recurring/occurrences";
 
 type CalendarEntry = { stream: Stream; paid: boolean; amount: number };
@@ -19,7 +21,16 @@ function todayIso() {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
+/** The calendar depends on the viewer's "today", so it only renders in the browser. */
 function MonthCalendar({ streams }: { streams: Stream[] }) {
+  const mounted = useMounted();
+  if (!mounted) return <Skeleton className="h-[460px] w-full rounded-[28px] xl:col-span-8" />;
+  return <MonthCalendarView streams={streams} />;
+}
+
+function MonthCalendarView({ streams }: { streams: Stream[] }) {
+  const { settings } = useSettings();
+  const sundayFirst = settings.week_start === "sunday";
   const [month, setMonth] = useState(() => `${todayIso().slice(0, 7)}-01`);
   const [picked, setPicked] = useState<string | null>(null);
   const today = todayIso();
@@ -37,7 +48,9 @@ function MonthCalendar({ streams }: { streams: Stream[] }) {
     return map;
   }, [streams, month, end]);
 
-  const lead = (new Date(`${month}T12:00:00`).getDay() + 6) % 7; // Monday-first
+  const firstDay = new Date(`${month}T12:00:00`).getDay();
+  const lead = sundayFirst ? firstDay : (firstDay + 6) % 7;
+  const weekdays = sundayFirst ? ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] : ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
   const days = Array.from({ length: Number(end.slice(8, 10)) }, (_, i) => addDays(month, i));
   const outTotal = [...byDay.values()].flat().filter((e) => e.stream.direction === "outflow").reduce((s, e) => s + e.amount, 0);
   const inTotal = [...byDay.values()].flat().filter((e) => e.stream.direction === "inflow").reduce((s, e) => s + e.amount, 0);
@@ -46,7 +59,7 @@ function MonthCalendar({ streams }: { streams: Stream[] }) {
   return (
     <Card className="xl:col-span-8">
       <CardHeader
-        title={new Date(`${month}T12:00:00`).toLocaleDateString("en-US", { month: "long", year: "numeric" })}
+        title={monthLabel(month.slice(0, 7), "long")}
         action={
           <div className="flex gap-1.5">
             <button aria-label="Previous month" onClick={() => setMonth(addMonths(month, -1))} className="grid size-9 place-items-center rounded-full bg-surface hover:bg-line">
@@ -63,8 +76,8 @@ function MonthCalendar({ streams }: { streams: Stream[] }) {
         <span className="text-brand-ink tabular">{money(inTotal)}</span> coming in
       </p>
       <div className="mt-5 grid grid-cols-7 gap-1 text-center text-xs text-muted sm:gap-2">
-        {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((d) => (
-          <span key={d} className="pb-1">
+        {weekdays.map((d) => (
+          <span key={d} className="pb-1" aria-hidden="true">
             {d}
           </span>
         ))}
@@ -74,9 +87,14 @@ function MonthCalendar({ streams }: { streams: Stream[] }) {
         {days.map((d) => {
           const entries = byDay.get(d) ?? [];
           const out = entries.filter((e) => e.stream.direction === "outflow").reduce((s, e) => s + e.amount, 0);
+          const label = `${fullDate(d)}${entries.length ? `: ${plural(entries.length, "charge")}${out > 0 ? `, ${money(out)} going out` : ""}` : ", nothing scheduled"}`;
           return (
             <button
               key={d}
+              type="button"
+              aria-label={label}
+              aria-pressed={d === picked}
+              aria-current={d === today ? "date" : undefined}
               onClick={() => setPicked(d === picked ? null : d)}
               className={cx(
                 "flex aspect-square flex-col items-center justify-between rounded-xl p-1 text-ink transition-colors sm:aspect-auto sm:h-[76px] sm:rounded-2xl sm:p-2",
@@ -96,7 +114,7 @@ function MonthCalendar({ streams }: { streams: Stream[] }) {
         })}
       </div>
       {picked ? (
-        <div className="mt-5 rounded-3xl bg-surface p-4">
+        <div className="mt-5 rounded-3xl bg-surface p-4" aria-live="polite">
           <p className="mb-2 text-sm font-medium">{relativeDay(picked)}</p>
           {pickedEntries.length ? (
             <ul className="flex flex-col gap-2">
@@ -156,7 +174,12 @@ export default function BillsPage() {
         {bills.length ? (
           <Card dark className="overflow-hidden !px-0 md:col-span-3 xl:col-span-12">
             <CardHeader className="px-5 sm:px-6" title="Coming up" />
-            <div className="no-scrollbar mt-4 flex snap-x gap-3 overflow-x-auto px-5 sm:px-6">
+            <div
+              tabIndex={0}
+              role="region"
+              aria-label="Upcoming charges, scroll sideways for more"
+              className="no-scrollbar mt-4 flex snap-x gap-3 overflow-x-auto rounded-3xl px-5 focus-visible:outline-offset-[-2px] sm:px-6"
+            >
               {bills.slice(0, 10).map((b) => (
                 <BillCard key={b.id} bill={b} />
               ))}

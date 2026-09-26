@@ -1,4 +1,5 @@
 import { addDays } from "@/lib/dates";
+import { LOCALE } from "@/lib/format";
 import type { Settings } from "@/lib/settings";
 
 // In-app alerts for the notification bell, driven by the user's settings.
@@ -26,7 +27,7 @@ export type AlertInputs = {
   month: { spending: number; dayOfMonth: number; daysInMonth: number };
 };
 
-const usd = (n: number) => new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(n);
+const usd = (n: number) => new Intl.NumberFormat(LOCALE, { style: "currency", currency: "USD" }).format(n);
 
 export function buildAlerts(input: AlertInputs): Alert[] {
   const { settings, today } = input;

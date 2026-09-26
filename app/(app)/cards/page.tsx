@@ -2,8 +2,7 @@
 
 import { ArrowRight, CreditCard, Info, Plus, Receipt, TriangleAlert } from "lucide-react";
 import Link from "next/link";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Suspense, useState } from "react";
+import { Suspense, useRef, useState } from "react";
 import { BankCard, cardStatus, NetworkLogo } from "@/components/BankCard";
 import { ConnectBankButton, type LinkOutcome } from "@/components/PlaidConnect";
 import { PageHeader } from "@/components/shell/PageHeader";
@@ -11,6 +10,7 @@ import { TransactionRow } from "@/components/TransactionRow";
 import { BigMoney, Card, CardHeader, cx, EmptyState, ErrorNote, Skeleton, Switch } from "@/components/ui";
 import { NETWORKS } from "@/lib/cards";
 import { api, refreshAll, useApi } from "@/lib/client/api";
+import { useQueryState } from "@/lib/client/hooks";
 import type { BankCardData, CardsResponse, TransactionsResponse } from "@/lib/client/types";
 import { money, percent, timeAgo } from "@/lib/format";
 import type { CardNetwork } from "@/lib/supabase/database.types";
@@ -83,6 +83,17 @@ function NetworkPicker({ card, locked }: { card: BankCardData; locked: boolean }
     { value: "auto", name: "Automatic", label: "Auto" },
     ...NETWORKS.map((n) => ({ value: n.value, name: n.label, label: <NetworkLogo network={n.value} className="text-ink" /> })),
   ];
+
+  // Radio group keyboard pattern: arrows move the choice and focus together.
+  function onKeyDown(e: React.KeyboardEvent<HTMLDivElement>) {
+    const step = e.key === "ArrowRight" || e.key === "ArrowDown" ? 1 : e.key === "ArrowLeft" || e.key === "ArrowUp" ? -1 : 0;
+    if (!step || locked || saving) return;
+    e.preventDefault();
+    const i = options.findIndex((o) => o.value === current);
+    const next = options[(i + step + options.length) % options.length]!;
+    e.currentTarget.querySelectorAll<HTMLButtonElement>("[role=radio]")[options.indexOf(next)]?.focus();
+    void choose(next.value);
+  }
   return (
     <div>
       <p className="text-[15px] font-medium">Card network</p>
@@ -92,16 +103,17 @@ function NetworkPicker({ card, locked }: { card: BankCardData; locked: boolean }
           : card.card_network
           ? "You picked this network."
           : card.network
-            ? `Guessed from the bank and account name. Pick one if it's wrong.`
+            ? "Guessed from the bank and account name. Pick one if it’s wrong."
             : "Unknown for this bank. Pick one to show its logo."}
       </p>
-      <div className="mt-3 flex flex-wrap gap-2" role="radiogroup" aria-label="Card network">
+      <div className="mt-3 flex flex-wrap gap-2" role="radiogroup" aria-label="Card network" onKeyDown={onKeyDown}>
         {options.map((o) => (
           <button
             key={o.value}
             type="button"
             role="radio"
             aria-checked={current === o.value}
+            tabIndex={current === o.value ? 0 : -1}
             aria-label={o.name}
             title={o.name}
             disabled={locked || saving !== null}
@@ -116,7 +128,9 @@ function NetworkPicker({ card, locked }: { card: BankCardData; locked: boolean }
           </button>
         ))}
       </div>
-      {error ? <p className="mt-2 text-sm text-danger">{error}</p> : null}
+      <p role="alert" className={error ? "mt-2 text-sm text-danger" : "sr-only"}>
+        {error ?? ""}
+      </p>
     </div>
   );
 }
@@ -196,7 +210,7 @@ function Details({ card, setupNeeded }: { card: BankCardData; setupNeeded: boole
           <span>
             {card.type === "credit"
               ? "The last 4 digits are what your bank reports for this card."
-              : "The last 4 digits are from your account number, which differs from your debit card's number."}{" "}
+              : "The last 4 digits are from your account number, which differs from your debit card’s number."}{" "}
             OmniRadar never receives expiration dates or security codes.
           </span>
         </p>
@@ -228,19 +242,22 @@ function Details({ card, setupNeeded }: { card: BankCardData; setupNeeded: boole
 }
 
 function CardsView() {
-  const router = useRouter();
-  const pathname = usePathname();
-  const params = useSearchParams();
   const { data, error, isLoading, mutate } = useApi<CardsResponse>("/api/cards?include_hidden=true");
   const [status, setStatus] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const [selectedId, setSelectedId] = useQueryState<string>("card", "");
+  const details = useRef<HTMLDivElement>(null);
   const cards = data?.cards ?? [];
-  const selectedId = params.get("card");
   const selected = cards.find((c) => c.id === selectedId) ?? cards[0];
   const banks = new Set(cards.map((c) => c.institution?.id)).size;
 
   function select(id: string) {
-    router.replace(`${pathname}?card=${id}`, { scroll: false });
+    setSelectedId(id);
+    // Below xl the details sit under the cards: bring them into view.
+    if (details.current && !window.matchMedia("(min-width: 80rem)").matches) {
+      const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      details.current.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "start" });
+    }
   }
 
   function outcome(o: LinkOutcome | null) {
@@ -260,7 +277,7 @@ function CardsView() {
 
       <div className="mt-5 grid animate-fade-up grid-cols-1 gap-4 px-4 sm:px-6 lg:mt-6 lg:px-8 xl:grid-cols-12">
         {status || message ? (
-          <div className="flex items-center justify-between gap-3 rounded-3xl bg-ink px-5 py-4 text-sm text-white xl:col-span-12">
+          <div role="status" className="flex items-center justify-between gap-3 rounded-3xl bg-ink px-5 py-4 text-sm text-white xl:col-span-12">
             <span>{status ?? message}</span>
             {message && !status ? (
               <button className="text-white/60 hover:text-white" onClick={() => setMessage(null)}>
@@ -316,7 +333,12 @@ function CardsView() {
               </div>
               <p className="mt-1 text-center text-xs text-faint sm:hidden">Swipe for more · tap a card for details</p>
             </section>
-            <div className="min-w-0 xl:col-span-5">{selected ? <Details key={selected.id} card={selected} setupNeeded={data?.setup_needed ?? false} /> : null}</div>
+            <p className="sr-only" aria-live="polite">
+              {selected && selectedId ? `Showing ${selected.name}` : ""}
+            </p>
+            <div ref={details} className="min-w-0 scroll-mt-4 xl:col-span-5">
+              {selected ? <Details key={selected.id} card={selected} setupNeeded={data?.setup_needed ?? false} /> : null}
+            </div>
           </>
         )}
       </div>

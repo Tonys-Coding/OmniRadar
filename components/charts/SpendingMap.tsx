@@ -4,15 +4,16 @@ import { ArrowLeft, Globe, LocateFixed, MapPin, Minus, Plus, RotateCcw } from "l
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { cx, Segmented } from "@/components/ui";
 import type { LocationsResponse } from "@/lib/client/types";
-import { money, moneyWhole } from "@/lib/format";
+import { money, moneyWhole, percent, plural } from "@/lib/format";
 import { heatAt, heatWeights, type HeatSource } from "@/lib/geo/heat";
 import { MAP_HEIGHT, MAP_WIDTH, mapDots, placePoint, stateAt, stateBox, stateCenter, stateName } from "@/lib/geo/us";
 import { boxOf, clampView, fitBox, fullView, lerpView, zoomAt, zoomOf, type Bounds, type View } from "@/lib/geo/viewport";
 import { useWidth } from "./useWidth";
 
 // Interactive hex-dot spending map ("Product Distributor" style):
-//   * zoom: +/- buttons, pinch, Ctrl/⌘ + scroll, double-click
-//   * pan: drag (on phones, once zoomed in, so the page still scrolls at 1x)
+//   * zoom: +/- buttons, pinch, Ctrl/⌘ + scroll, or +/- keys when focused
+//   * pan: drag (on phones, once zoomed in, so the page still scrolls at 1x),
+//     or the arrow keys when focused; Escape or 0 resets
 //   * States view shades states by spending; Cities view shows a marker per city
 //   * click a state (map or list) to zoom in and list its cities
 //   * labels and dot density adapt to the zoom level
@@ -46,8 +47,6 @@ function targetOf(el: EventTarget | null): Target | null {
   return state ? { kind: "state", key: state } : null;
 }
 
-const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
-
 const dist = (a: { x: number; y: number }, b: { x: number; y: number }) => Math.hypot(a.x - b.x, a.y - b.y);
 
 function MapButton({ label, disabled, onClick, children }: { label: string; disabled?: boolean; onClick: () => void; children: React.ReactNode }) {
@@ -78,7 +77,7 @@ function MapSummary({ data, focus }: { data: LocationsResponse; focus: string | 
         <div className="mt-2 grid grid-cols-2 gap-3 text-sm">
           <div>
             <p className="text-white/45">Share of in-person</p>
-            <p className="font-medium tabular">{Math.round(share * 100)}%</p>
+            <p className="font-medium tabular">{percent(share)}</p>
           </div>
           <div>
             <p className="text-white/45">Purchases</p>
@@ -122,7 +121,7 @@ function MapSummary({ data, focus }: { data: LocationsResponse; focus: string | 
           <li key={p.label} className="flex items-center gap-2">
             <span className="size-2 rounded-full" style={{ background: p.color }} />
             <span className="flex-1 text-white/60">{p.label}</span>
-            <span className="text-white/45 tabular">{total > 0 ? Math.round((p.value / total) * 100) : 0}%</span>
+            <span className="text-white/45 tabular">{percent(total > 0 ? p.value / total : 0)}</span>
             <span className="w-16 text-right font-medium tabular">{moneyWhole(p.value)}</span>
           </li>
         ))}
@@ -153,6 +152,11 @@ export function SpendingMap({ data, action, listSize = 6 }: { data: LocationsRes
   const animateTo = useCallback(
     (target: View) => {
       if (anim.current) cancelAnimationFrame(anim.current);
+      if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+        anim.current = null;
+        setView(target);
+        return;
+      }
       const from = viewRef.current;
       const start = performance.now();
       const step = (now: number) => {
@@ -331,6 +335,25 @@ export function SpendingMap({ data, action, listSize = 6 }: { data: LocationsRes
     }
   }
 
+  // Keyboard: arrows pan a fifth of the view, +/- zoom, Escape or 0 resets.
+  function onKeyDown(e: React.KeyboardEvent<SVGSVGElement>) {
+    const v = viewRef.current;
+    const pan = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }[e.key];
+    if (pan) {
+      e.preventDefault();
+      animateTo(clampView({ ...v, x: v.x + pan[0]! * v.w * 0.2, y: v.y + pan[1]! * v.h * 0.2 }, BOUNDS));
+    } else if (e.key === "+" || e.key === "=") {
+      e.preventDefault();
+      zoomButton(1.8);
+    } else if (e.key === "-" || e.key === "_") {
+      e.preventDefault();
+      zoomButton(1 / 1.8);
+    } else if (e.key === "Escape" || e.key === "0") {
+      e.preventDefault();
+      reset();
+    }
+  }
+
   // Ctrl/⌘ + wheel zooms (this is also what a trackpad pinch sends); plain
   // scrolling keeps scrolling the page.
   useEffect(() => {
@@ -453,6 +476,7 @@ export function SpendingMap({ data, action, listSize = 6 }: { data: LocationsRes
           <Segmented
             dark
             size="sm"
+            label="Map view"
             options={[
               { value: "states", label: "States" },
               { value: "cities", label: "Cities" },
@@ -556,10 +580,12 @@ export function SpendingMap({ data, action, listSize = 6 }: { data: LocationsRes
           <svg
             ref={svgRef}
             viewBox={`${view.x} ${view.y} ${view.w} ${view.h}`}
-            className={cx("block h-auto w-full select-none", zoomed ? "cursor-grab active:cursor-grabbing" : "cursor-pointer")}
+            className={cx("block h-auto w-full rounded-3xl select-none focus-visible:outline-offset-[-2px]", zoomed ? "cursor-grab active:cursor-grabbing" : "cursor-pointer")}
             style={{ touchAction: zoomed ? "none" : "pan-y", aspectRatio: `${ASPECT}` }}
             role="img"
-            aria-label="Interactive map of spending by state and city"
+            aria-label="Map of spending by state and city. Arrow keys pan, plus and minus zoom, Escape resets. The list beside the map opens each state."
+            tabIndex={0}
+            onKeyDown={onKeyDown}
             onPointerDown={onPointerDown}
             onPointerMove={onPointerMove}
             onPointerUp={(e) => endPointer(e, false)}
@@ -639,7 +665,9 @@ export function SpendingMap({ data, action, listSize = 6 }: { data: LocationsRes
           </div>
         </div>
       </div>
-      <p className="mt-3 text-xs text-white/40">Click a state to see its cities, click outside it to go back · drag to pan · pinch or Ctrl/⌘ + scroll to zoom</p>
+      <p className="mt-3 text-xs text-white/40">
+        Tap or click a state to see its cities, and outside it to go back · drag or use arrow keys to pan · pinch, +/−, or Ctrl/⌘&nbsp;+&nbsp;scroll to zoom
+      </p>
     </div>
   );
 }

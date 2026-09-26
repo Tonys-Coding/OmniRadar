@@ -9,7 +9,7 @@ import { BigMoney, Button, Card, CardHeader, cx, EmptyState, ErrorNote, Logo, Pi
 import { colorAt } from "@/lib/categories-ui";
 import { api, refreshAll, useApi } from "@/lib/client/api";
 import type { Account, AccountsResponse, Item, ItemsResponse, SyncResult } from "@/lib/client/types";
-import { money, percent, timeAgo } from "@/lib/format";
+import { money, percent, plural, timeAgo } from "@/lib/format";
 
 const TYPE_LABEL: Record<string, string> = {
   depository: "Cash",
@@ -38,8 +38,8 @@ function AccountRow({ a }: { a: Account }) {
           {a.name}
           {a.mask ? <span className="ml-1.5 text-sm font-normal text-faint">••{a.mask}</span> : null}
         </p>
-        <p className="truncate text-sm text-muted capitalize">
-          {a.subtype ?? a.type}
+        <p className="truncate text-sm text-muted">
+          <span className="capitalize">{a.subtype ?? a.type}</span>
           {a.type === "depository" && a.available_balance !== null ? ` · ${money(a.available_balance)} available` : ""}
           {a.type === "credit" && a.credit_limit ? ` · ${money(a.credit_limit)} limit` : ""}
         </p>
@@ -153,7 +153,7 @@ function InstitutionCard({ item, accounts, onMessage }: { item: Item; accounts: 
           </>
         ) : (
           <Button size="sm" variant="ghost" onClick={() => setConfirming(true)}>
-            Remove
+            Remove bank…
           </Button>
         )}
       </div>
@@ -197,7 +197,7 @@ export default function AccountsPage() {
 
   return (
     <>
-      <PageHeader title="Accounts" subtitle={`${items.length} connected bank${items.length === 1 ? "" : "s"} · ${accounts.length} accounts`}>
+      <PageHeader title="Accounts" subtitle={`${plural(items.length, "connected bank")} · ${plural(accounts.length, "account")}`}>
         <div className="mt-5 flex flex-wrap gap-2">
           <ConnectBankButton onOutcome={outcome} onStatus={setStatus}>
             <Plus /> Connect a bank
@@ -212,7 +212,7 @@ export default function AccountsPage() {
 
       <div className="mt-5 grid animate-fade-up grid-cols-1 gap-4 px-4 sm:px-6 lg:mt-6 lg:px-8 xl:grid-cols-3">
         {status || message ? (
-          <div className="flex items-center justify-between gap-3 rounded-3xl bg-ink px-5 py-4 text-sm text-white xl:col-span-3">
+          <div role="status" className="flex items-center justify-between gap-3 rounded-3xl bg-ink px-5 py-4 text-sm text-white xl:col-span-3">
             <span>{status ?? message}</span>
             {message && !status ? (
               <button className="text-white/60 hover:text-white" onClick={() => setMessage(null)}>
@@ -238,7 +238,7 @@ export default function AccountsPage() {
                 </p>
               </div>
               <div>
-                <AllocationBar values={types.map(([, v]) => Math.abs(v))} />
+                <AllocationBar label="Net worth by account type" values={types.map(([, v]) => Math.abs(v))} />
                 <ul className="mt-4 flex flex-wrap gap-x-6 gap-y-2 text-sm">
                   {types.map(([type, v], i) => (
                     <li key={type} className="flex items-center gap-2">
@@ -260,7 +260,7 @@ export default function AccountsPage() {
         ) : items.length === 0 ? (
           <Card className="xl:col-span-3">
             <EmptyState icon={<Landmark />} title="No banks connected yet">
-              Connect Bank of America, Capital One, or any of 10,000+ banks. You sign in on your bank&apos;s own page; OmniRadar never sees your password.
+              Connect Bank of America, Capital One, or any of 10,000+ banks. You sign in on your bank’s own page; OmniRadar never sees your password.
             </EmptyState>
           </Card>
         ) : (

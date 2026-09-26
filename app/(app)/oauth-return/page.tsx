@@ -26,7 +26,9 @@ export default function OAuthReturnPage() {
     <div className="grid min-h-[60dvh] place-items-center p-6 text-center">
       <div className="flex flex-col items-center gap-3">
         <Spinner className="size-7" />
-        <p className="text-muted">{status}</p>
+        <p role="status" className="text-muted">
+          {status}
+        </p>
       </div>
       {resume ? (
         <LinkLauncher

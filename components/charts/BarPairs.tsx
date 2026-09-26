@@ -6,7 +6,7 @@ import { useWidth } from "./useWidth";
 
 export type BarGroup = { label: string; income: number; spending: number };
 
-/** Income (blue) vs spending (ink) side by side for each period. */
+/** Income (teal) vs spending (ink) side by side for each period. Tab or click a period to read it. */
 export function BarPairs({ groups, height = 190 }: { groups: BarGroup[]; height?: number }) {
   const [ref, width] = useWidth<HTMLDivElement>();
   const [selected, setSelected] = useState<number | null>(null);
@@ -33,7 +33,7 @@ export function BarPairs({ groups, height = 190 }: { groups: BarGroup[]; height?
       </div>
       <div ref={ref} style={{ height }} className="w-full">
         {width > 0 ? (
-          <svg width={width} height={height} role="img" aria-label="Income versus spending by period">
+          <svg width={width} height={height} role="group" aria-label="Income versus spending by period">
             {groups.map((g, i) => {
               const cx = slot * i + slot / 2;
               const hIn = (g.income / max) * plotH;
@@ -42,11 +42,22 @@ export function BarPairs({ groups, height = 190 }: { groups: BarGroup[]; height?
               return (
                 <g
                   key={g.label + i}
+                  role="button"
+                  tabIndex={0}
+                  aria-pressed={i === active}
+                  aria-label={`${g.label}: ${money(g.income)} income, ${money(g.spending)} spending`}
                   onPointerEnter={() => setSelected(i)}
                   onClick={() => setSelected(i)}
-                  className="cursor-pointer"
+                  onFocus={() => setSelected(i)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      setSelected(i);
+                    }
+                  }}
+                  className="cursor-pointer outline-none [&:focus-visible>rect:first-child]:stroke-brand [&:focus-visible>rect:first-child]:stroke-2"
                 >
-                  <rect x={slot * i} y={0} width={slot} height={height} fill="transparent" />
+                  <rect x={slot * i + 1} y={1} width={slot - 2} height={height - 2} rx={12} fill="transparent" />
                   <rect x={cx - barW - 2} y={plotH - hIn} width={barW} height={Math.max(hIn, 2)} rx={barW / 2} fill="#14A1A5" opacity={dim} />
                   <rect x={cx + 2} y={plotH - hOut} width={barW} height={Math.max(hOut, 2)} rx={barW / 2} fill="#121214" opacity={dim} />
                   <text x={cx} y={height - 6} textAnchor="middle" fontSize={12} fill="#121214" fillOpacity={i === active ? 0.9 : 0.45}>
