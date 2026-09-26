@@ -3,6 +3,7 @@
 import {
   BellRing,
   Check,
+  ChevronDown,
   Database,
   Download,
   KeyRound,
@@ -301,9 +302,7 @@ function AlertsSection({ toast }: { toast: (m: string, t?: "ok" | "error") => vo
               </option>
             ))}
           </select>
-          <span aria-hidden="true" className="pointer-events-none absolute top-1/2 right-3.5 -translate-y-1/2 text-xs text-muted">
-            ▾
-          </span>
+          <ChevronDown aria-hidden="true" className="pointer-events-none absolute top-1/2 right-3 size-4 -translate-y-1/2 text-muted" />
         </label>
         <Switch checked={a.bill_reminders.enabled} onChange={(v) => save({ alerts: { bill_reminders: { enabled: v } } })} label="Bill reminders" />
       </Row>
@@ -570,7 +569,7 @@ export default function SettingsPage() {
   return (
     <>
       <PageHeader title="Settings" subtitle="Profile, preferences, alerts, and security" />
-      <div className="mt-5 grid animate-fade-up grid-cols-1 gap-4 px-4 sm:px-6 lg:mt-7 lg:grid-cols-[220px_minmax(0,1fr)] lg:px-8 xl:max-w-6xl">
+      <div className="mt-5 grid grid-cols-1 gap-4 px-4 sm:px-6 lg:mt-7 lg:grid-cols-[220px_minmax(0,1fr)] lg:px-8 xl:max-w-6xl">
         <nav aria-label="Settings sections" className="no-scrollbar -mx-4 flex gap-2 overflow-x-auto px-4 lg:sticky lg:top-6 lg:mx-0 lg:flex-col lg:self-start lg:overflow-visible lg:px-0">
           {SECTIONS.map(({ id, label, icon: Icon }) => (
             <a key={id} href={`#${id}`} className="flex shrink-0 items-center gap-2.5 rounded-full bg-surface px-4 py-2.5 text-sm font-medium whitespace-nowrap hover:bg-line lg:bg-transparent lg:hover:bg-surface">

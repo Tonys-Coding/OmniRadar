@@ -32,7 +32,7 @@ export function TransactionRow({
       <span className="min-w-0 flex-1">
         <span className="flex items-center gap-2">
           <span className="truncate font-medium">{name}</span>
-          {t.pending ? <span className="shrink-0 rounded-full bg-surface px-2 py-0.5 text-[10px] font-medium text-muted uppercase">Pending</span> : null}
+          {t.pending ? <span className="shrink-0 rounded-full bg-surface px-2 py-0.5 text-[11px] font-medium text-muted">Pending</span> : null}
         </span>
         <span className="block truncate text-sm text-muted">
           {categoryLabel(t.category_primary)}

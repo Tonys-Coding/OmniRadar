@@ -62,7 +62,7 @@ function Subscriptions() {
   return (
     <>
       <PageHeader title="Subscriptions" subtitle="Everything that charges you on repeat" />
-      <div className="mt-5 grid animate-fade-up grid-cols-1 gap-4 px-4 sm:px-6 md:grid-cols-3 lg:mt-7 lg:px-8">
+      <div className="mt-5 grid grid-cols-1 gap-4 px-4 sm:px-6 md:grid-cols-3 lg:mt-7 lg:px-8">
         {[
           { icon: <Repeat />, title: "Monthly cost", value: totals?.monthly, sub: plural(totals?.count ?? 0, "active subscription") },
           { icon: <CalendarRange />, title: "Yearly cost", value: totals?.yearly, sub: "At today’s prices" },
@@ -90,7 +90,7 @@ function Subscriptions() {
         ))}
 
         <Card className="md:col-span-3 xl:col-span-2">
-          <CardHeader title="Active subscriptions" action={totals ? <Pill>{money(totals.monthly)}/mo</Pill> : null} />
+          <CardHeader title="Active subscriptions" action={totals ? <Pill className="tabular">{money(totals.monthly)}/mo</Pill> : null} />
           {isLoading ? (
             <Skeleton className="mt-5 h-64 w-full" />
           ) : subs.length ? (
@@ -137,7 +137,11 @@ function Subscriptions() {
               ))}
             </ul>
           ) : (
-            <p className="py-10 text-center text-sm text-faint">Nothing here.</p>
+            <p className="py-10 text-center text-sm text-muted">
+              {view === "inactive"
+                ? "Nothing has stopped. A subscription that misses its expected charge shows up here."
+                : "Nothing hidden. Use a charge’s menu to hide it when it isn’t really recurring."}
+            </p>
           )}
         </Card>
       </div>

@@ -47,7 +47,7 @@ export function Pill({ children, tone = "dark", className }: { children: React.R
     brand: "bg-brand-pale text-brand-deep",
     danger: "bg-danger/10 text-danger",
   };
-  return <span className={cx("inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium tabular", tones[tone], className)}>{children}</span>;
+  return <span className={cx("inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium [font-variant-numeric:tabular-nums]", tones[tone], className)}>{children}</span>;
 }
 
 /** $78,162 with smaller .12 */

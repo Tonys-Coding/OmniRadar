@@ -156,7 +156,7 @@ export default function BillsPage() {
   return (
     <>
       <PageHeader title="Bills" subtitle="Upcoming charges and paydays" />
-      <div className="mt-5 grid animate-fade-up grid-cols-1 gap-4 px-4 sm:px-6 md:grid-cols-3 lg:mt-7 lg:px-8 xl:grid-cols-12">
+      <div className="mt-5 grid grid-cols-1 gap-4 px-4 sm:px-6 md:grid-cols-3 lg:mt-7 lg:px-8 xl:grid-cols-12">
         {[
           { icon: <CalendarClock />, title: "Due in 7 days", value: dueIn(7) },
           { icon: <CalendarDays />, title: "Due in 30 days", value: dueIn(30) },

@@ -275,7 +275,7 @@ function CardsView() {
         </div>
       </PageHeader>
 
-      <div className="mt-5 grid animate-fade-up grid-cols-1 gap-4 px-4 sm:px-6 lg:mt-6 lg:px-8 xl:grid-cols-12">
+      <div className="mt-5 grid grid-cols-1 gap-4 px-4 sm:px-6 lg:mt-6 lg:px-8 xl:grid-cols-12">
         {status || message ? (
           <div role="status" className="flex items-center justify-between gap-3 rounded-3xl bg-ink px-5 py-4 text-sm text-white xl:col-span-12">
             <span>{status ?? message}</span>

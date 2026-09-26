@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronLeft, ChevronRight, Gauge, Receipt, TrendingDown, TrendingUp } from "lucide-react";
+import { ArrowDown, ArrowUp, ChevronLeft, ChevronRight, Gauge, Receipt, TrendingDown, TrendingUp } from "lucide-react";
 import Link from "next/link";
 import { Suspense } from "react";
 import { CompareLines } from "@/components/charts/CompareLines";
@@ -68,7 +68,7 @@ function Spending() {
         </div>
       </PageHeader>
 
-      <div className="mt-5 grid animate-fade-up grid-cols-1 gap-4 px-4 sm:px-6 md:grid-cols-3 lg:mt-6 lg:px-8 xl:grid-cols-12">
+      <div className="mt-5 grid grid-cols-1 gap-4 px-4 sm:px-6 md:grid-cols-3 lg:mt-6 lg:px-8 xl:grid-cols-12">
         {[
           {
             icon: <Receipt />,
@@ -89,7 +89,7 @@ function Spending() {
             value: projected ?? data?.previous_total ?? 0,
             badge: isCurrent ? (
               budget ? (
-                <Pill tone={(projected ?? 0) > budget ? "danger" : "brand"}>
+                <Pill tone={(projected ?? 0) > budget ? "danger" : "brand"} className="tabular">
                   {(projected ?? 0) > budget ? `${money((projected ?? 0) - budget)} over budget` : "within budget"}
                 </Pill>
               ) : (
@@ -178,7 +178,7 @@ function Spending() {
                           <span className="flex items-baseline gap-3">
                             {change !== null ? (
                               <span className={cx("text-xs tabular", change > 0 ? "text-ink" : "text-brand-ink")}>
-                                <span aria-hidden="true">{change > 0 ? "▲" : "▼"}</span>
+                                {change > 0 ? <ArrowUp className="inline size-3 -translate-y-px" aria-hidden="true" /> : <ArrowDown className="inline size-3 -translate-y-px" aria-hidden="true" />}
                                 <span className="sr-only">{change > 0 ? "up" : "down"}</span> {percent(Math.abs(change))}
                               </span>
                             ) : (
@@ -238,7 +238,7 @@ function Spending() {
             <div className="h-80 animate-pulse rounded-3xl bg-white/5" />
           )}
           {places && places.unknown.total > 0 ? (
-            <p className="mt-4 text-xs text-white/40">
+            <p className="mt-4 text-xs text-white/55">
               {money(places.unknown.total)} across {plural(places.unknown.count, "purchase")} had no location from the bank.
             </p>
           ) : null}

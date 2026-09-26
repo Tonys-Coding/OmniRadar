@@ -50,7 +50,7 @@ function StatCard({
   progress?: number | null;
 }) {
   return (
-    <Card className="flex flex-col justify-between gap-6 xl:col-span-3">
+    <Card className="flex flex-col justify-between gap-6 md:col-span-2 xl:col-span-3">
       <h2 className="flex items-center gap-2.5 text-[17px] font-medium">
         <IconChip>{icon}</IconChip>
         {title}
@@ -94,10 +94,10 @@ function BalanceHero() {
   const change = last - first;
 
   return (
-    <Card dark className="overflow-hidden !pb-3 xl:col-span-9">
+    <Card dark className="overflow-hidden !pb-3 md:col-span-6 xl:col-span-9">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
-          <h2 className="text-lg font-medium sm:text-xl">Balance history</h2>
+          <h2 className="text-[17px] font-medium sm:text-lg">Balance history</h2>
           <Segmented
             dark
             size="sm"
@@ -159,7 +159,7 @@ function BalanceCard({ summary }: { summary?: Summary }) {
   }
 
   return (
-    <Card className="flex flex-col xl:col-span-3 xl:row-span-2">
+    <Card className="flex flex-col md:col-span-6 xl:col-span-3 xl:row-span-2">
       <CardHeader
         title="Current balance"
         action={
@@ -169,19 +169,20 @@ function BalanceCard({ summary }: { summary?: Summary }) {
         }
       />
       {summary ? (
-        <>
-          <div className="mt-6 flex flex-wrap items-end gap-x-3 gap-y-1">
+        <div className="flex flex-1 flex-col md:grid md:grid-cols-2 md:gap-x-10 xl:flex">
+          <div className="mt-6 flex flex-wrap items-end gap-x-3 gap-y-1 md:col-start-1 md:self-end">
             <BigMoney value={summary.balances.cash} className="text-[40px] leading-none sm:text-[44px]" />
             <span className={cx("pb-1 text-sm", net >= 0 ? "text-brand-ink" : "text-muted")}>
               {net >= 0 ? "+" : "-"}
               {money(Math.abs(net))} this month
             </span>
           </div>
-          <p className="mt-1 text-sm text-muted">
+          <p className="mt-1 text-sm text-muted md:col-start-1">
             <span className="tabular">{money(summary.balances.available)}</span> available to spend
           </p>
 
-          <p className="mt-7 mb-3 text-[15px]">Where it is</p>
+          <div className="md:col-start-2 md:row-span-3 md:row-start-1 xl:contents">
+          <p className="mt-7 mb-3 text-[15px] md:mt-6 xl:mt-7">Where it is</p>
           <AllocationBar label="Cash by account" values={cash.map((a) => Math.max(0, a.current_balance ?? 0))} />
           <ul className="mt-5 flex flex-col gap-3.5">
             {cash.map((a, i) => (
@@ -199,13 +200,14 @@ function BalanceCard({ summary }: { summary?: Summary }) {
               <span className="font-medium text-ink tabular">{money(summary.net_worth.net_worth)}</span>
             </li>
           </ul>
-          <div className="mt-auto pt-6">
+          </div>
+          <div className="mt-auto pt-6 md:col-start-1">
             <Link href="/accounts" className="flex h-13 w-full items-center justify-center rounded-full bg-ink text-[15px] font-medium text-white hover:bg-ink-3">
               Manage accounts
             </Link>
             <p className="mt-2.5 text-center text-xs text-faint">Synced {timeAgo(summary.connections.oldest_sync)}</p>
           </div>
-        </>
+        </div>
       ) : (
         <div className="mt-6 space-y-4">
           <Skeleton className="h-12 w-52" />
@@ -228,7 +230,7 @@ function CashflowCard({ summary }: { summary?: Summary }) {
           spending: d.spending,
         }));
   return (
-    <Card className="xl:col-span-4">
+    <Card className="md:col-span-3 xl:col-span-4">
       <CardHeader
         title="Income vs spending"
         action={
@@ -255,7 +257,7 @@ function CategoryCard({ summary }: { summary?: Summary }) {
   const rest = cats.slice(5).reduce((s, c) => s + c.total, 0);
   const total = cats.reduce((s, c) => s + c.total, 0);
   return (
-    <Card className="xl:col-span-4">
+    <Card className="md:col-span-3 xl:col-span-4">
       <CardHeader
         title="Spending by category"
         action={
@@ -298,7 +300,7 @@ function MyCards() {
   const { data } = useApi<CardsResponse>("/api/cards");
   if (data && data.cards.length === 0) return null;
   return (
-    <Card className="overflow-hidden !px-0 md:col-span-2 xl:col-span-12">
+    <Card className="overflow-hidden !px-0 md:col-span-6 xl:col-span-12">
       <CardHeader
         className="px-5 sm:px-6"
         title="My Cards"
@@ -333,7 +335,7 @@ function ActivityCard() {
   const { settings } = useSettings();
   const { data } = useApi<DailyResponse>("/api/spending/daily?days=84");
   return (
-    <Card className="xl:col-span-4">
+    <Card className="md:col-span-3 xl:col-span-4">
       <CardHeader title="Spending activity" action={<Pill>12 weeks</Pill>} />
       {data ? (
         <>
@@ -355,7 +357,7 @@ function ActivityCard() {
 function UpcomingCard() {
   const { data } = useApi<BillsResponse>("/api/bills?days=30");
   return (
-    <Card className="overflow-hidden !px-0 xl:col-span-4">
+    <Card className="overflow-hidden !px-0 md:col-span-3 xl:col-span-4">
       <CardHeader
         className="px-5 sm:px-6"
         title="Upcoming bills"
@@ -398,7 +400,7 @@ function UpcomingCard() {
 function RecentTransactions() {
   const { data } = useApi<TransactionsResponse>("/api/transactions?limit=6");
   return (
-    <Card className="xl:col-span-4">
+    <Card className="md:col-span-3 xl:col-span-4">
       <CardHeader
         title="Recent transactions"
         action={
@@ -426,7 +428,7 @@ function MapCard() {
   const [days, setDays] = useQueryState<"30" | "90" | "365">("map", "90", ["30", "90", "365"]);
   const { data } = useApi<LocationsResponse>(`/api/spending/locations?days=${days}`);
   return (
-    <Card dark className="xl:col-span-12">
+    <Card dark className="md:col-span-6 xl:col-span-12">
       {data ? (
         <SpendingMap
           data={data}
@@ -454,8 +456,7 @@ function MapCard() {
 
 function ConnectFirstBank() {
   return (
-    <Card dark className="relative overflow-hidden xl:col-span-12">
-      <div className="pointer-events-none absolute -top-24 -right-24 size-80 rounded-full bg-brand-bright/30 blur-3xl" />
+    <Card dark className="relative overflow-hidden md:col-span-6 xl:col-span-12">
       <div className="relative flex flex-col items-start gap-4 sm:flex-row sm:items-center">
         <span className="grid size-12 place-items-center rounded-full bg-white/10">
           <Landmark className="size-5" />
@@ -500,7 +501,7 @@ function Dashboard() {
   return (
     <>
       <PageHeader title="Dashboard" subtitle={`${greeting(mounted)}, ${nameOf(profile)}`} />
-      <div className="mt-5 grid animate-fade-up grid-cols-1 gap-4 px-4 sm:px-6 md:grid-cols-2 lg:mt-7 lg:px-8 xl:grid-cols-12">
+      <div className="mt-5 grid grid-cols-1 gap-4 px-4 sm:px-6 md:grid-cols-6 lg:mt-7 lg:px-8 xl:grid-cols-12">
         {noBanks ? <ConnectFirstBank /> : null}
 
         <StatCard
@@ -522,7 +523,7 @@ function Dashboard() {
           icon={<CalendarDays />}
           title="This week"
           value={week?.spending ?? 0}
-          badge={week ? <Pill tone="brand">+{money(week.income)} in</Pill> : null}
+          badge={week ? <Pill tone="brand" className="tabular">+{money(week.income)} in</Pill> : null}
           sub={week ? `Spent since ${shortDate(week.start)}` : null}
         />
         <StatCard
@@ -577,7 +578,7 @@ function SubscriptionsMini({ summary }: { summary?: Summary }) {
       ]
     : [];
   return (
-    <Card className="flex flex-col xl:col-span-4">
+    <Card className="flex flex-col md:col-span-3 xl:col-span-4">
       <CardHeader title="Monthly commitments" />
       {r ? (
         <>

@@ -76,15 +76,15 @@ function MapSummary({ data, focus }: { data: LocationsResponse; focus: string | 
         <p className="text-xs text-white/50">{stateName(focus)} summary</p>
         <div className="mt-2 grid grid-cols-2 gap-3 text-sm">
           <div>
-            <p className="text-white/45">Share of in-person</p>
+            <p className="text-white/55">Share of in-person</p>
             <p className="font-medium tabular">{percent(share)}</p>
           </div>
           <div>
-            <p className="text-white/45">Purchases</p>
+            <p className="text-white/55">Purchases</p>
             <p className="font-medium tabular">{state?.count ?? 0}</p>
           </div>
           <div className="col-span-2">
-            <p className="text-white/45">Top city</p>
+            <p className="text-white/55">Top city</p>
             <p className="truncate font-medium">
               {top ? (
                 <>
@@ -121,7 +121,7 @@ function MapSummary({ data, focus }: { data: LocationsResponse; focus: string | 
           <li key={p.label} className="flex items-center gap-2">
             <span className="size-2 rounded-full" style={{ background: p.color }} />
             <span className="flex-1 text-white/60">{p.label}</span>
-            <span className="text-white/45 tabular">{percent(total > 0 ? p.value / total : 0)}</span>
+            <span className="text-white/55 tabular">{percent(total > 0 ? p.value / total : 0)}</span>
             <span className="w-16 text-right font-medium tabular">{moneyWhole(p.value)}</span>
           </li>
         ))}
@@ -493,7 +493,7 @@ export function SpendingMap({ data, action, listSize = 6 }: { data: LocationsRes
         {/* The list never sets the row height (it scrolls inside), so selecting a
             state can't shrink the page and make it jump. */}
         <div className="relative order-2 min-w-0 md:order-1 md:min-h-[420px]">
-          <div className="flex min-h-[320px] min-w-0 flex-col rounded-3xl border border-white/10 bg-white/[0.04] p-2 backdrop-blur-md md:absolute md:inset-0 md:min-h-0">
+          <div className="flex min-h-[320px] min-w-0 flex-col rounded-3xl border border-white/10 bg-white/[0.04] p-2 md:absolute md:inset-0 md:min-h-0">
             <div className="flex items-center gap-2 px-2 pt-1 pb-2">
               {focus ? (
                 <button onClick={reset} aria-label="Back to all states" className="grid size-7 place-items-center rounded-full bg-white/10 text-white hover:bg-white/20">
@@ -523,7 +523,7 @@ export function SpendingMap({ data, action, listSize = 6 }: { data: LocationsRes
                       <span className="grid size-8 shrink-0 place-items-center rounded-full bg-white/10 text-[11px] font-medium text-white/85">{r.region}</span>
                       <span className="min-w-0 flex-1">
                         <span className="block truncate text-sm text-white">{stateName(r.region)}</span>
-                        <span className="block truncate text-xs text-white/45">
+                        <span className="block truncate text-xs text-white/55">
                           {plural(citiesPerRegion.get(r.region) ?? 0, "city", "cities")} · {plural(r.count, "purchase")}
                         </span>
                       </span>
@@ -548,7 +548,7 @@ export function SpendingMap({ data, action, listSize = 6 }: { data: LocationsRes
                         </span>
                         <span className="min-w-0 flex-1">
                           <span className="block truncate text-sm text-white">{p.city}</span>
-                          <span className="block truncate text-xs text-white/45">
+                          <span className="block truncate text-xs text-white/55">
                             {p.region ?? p.country ?? ""} · {plural(p.count, "purchase")}
                           </span>
                         </span>
@@ -565,7 +565,7 @@ export function SpendingMap({ data, action, listSize = 6 }: { data: LocationsRes
                   </span>
                   <span className="min-w-0 flex-1">
                     <span className="block text-sm text-white">Online</span>
-                    <span className="block text-xs text-white/45">{plural(data.online.count, "purchase")}</span>
+                    <span className="block text-xs text-white/55">{plural(data.online.count, "purchase")}</span>
                   </span>
                   <span className="text-sm font-medium text-white tabular">{moneyWhole(data.online.total)}</span>
                 </li>
@@ -665,7 +665,7 @@ export function SpendingMap({ data, action, listSize = 6 }: { data: LocationsRes
           </div>
         </div>
       </div>
-      <p className="mt-3 text-xs text-white/40">
+      <p className="mt-3 text-xs text-white/55">
         Tap or click a state to see its cities, and outside it to go back · drag or use arrow keys to pan · pinch, +/−, or Ctrl/⌘&nbsp;+&nbsp;scroll to zoom
       </p>
     </div>

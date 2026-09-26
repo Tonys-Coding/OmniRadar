@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowDownLeft, ArrowUpRight, Receipt, Search, X } from "lucide-react";
+import { ArrowDownLeft, ArrowUpRight, ChevronDown, Receipt, Search, X } from "lucide-react";
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import useSWRInfinite from "swr/infinite";
 import { PageHeader } from "@/components/shell/PageHeader";
@@ -44,9 +44,7 @@ function Select({ value, onChange, label, children }: { value: string; onChange:
       >
         {children}
       </select>
-      <span aria-hidden="true" className={cx("pointer-events-none absolute top-1/2 right-3.5 -translate-y-1/2 text-xs", value ? "text-white" : "text-muted")}>
-        ▾
-      </span>
+      <ChevronDown aria-hidden="true" className={cx("pointer-events-none absolute top-1/2 right-3.5 size-4 -translate-y-1/2", value ? "text-white" : "text-muted")} />
     </label>
   );
 }

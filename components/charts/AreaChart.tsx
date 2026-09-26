@@ -121,7 +121,7 @@ export function AreaChart({ data, height = 280, formatY, formatX, tickLabel, dar
             <text x={tipW / 2} y={19} textAnchor="middle" fontSize={13} fontWeight={500} fill={dark ? "#121214" : "#fff"} className="tabular">
               {tooltipText}
             </text>
-            <text x={tipW / 2} y={34} textAnchor="middle" fontSize={10.5} fill={dark ? "#121214" : "#fff"} fillOpacity={0.6}>
+            <text x={tipW / 2} y={34} textAnchor="middle" fontSize={11} fill={dark ? "#121214" : "#fff"} fillOpacity={0.6}>
               {tooltipDate}
             </text>
           </g>

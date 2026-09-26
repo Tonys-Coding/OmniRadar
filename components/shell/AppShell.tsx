@@ -104,7 +104,7 @@ function Sidebar({ initialExpanded }: { initialExpanded: boolean }) {
           {expanded ? (
             <span className="min-w-0 text-left">
               <span className="block text-[15px] font-medium">Sign out</span>
-              <span className="block truncate text-xs text-white/40">{profile.email}</span>
+              <span className="block truncate text-xs text-white/55">{profile.email}</span>
             </span>
           ) : null}
         </button>
@@ -128,7 +128,7 @@ function MobileNav() {
             href={href}
             aria-current={active ? "page" : undefined}
             className={cx(
-              "flex min-w-0 flex-1 flex-col items-center gap-0.5 rounded-full py-2 text-[10px] font-medium transition-colors",
+              "flex min-w-0 flex-1 flex-col items-center gap-0.5 rounded-full py-2 text-[11px] font-medium transition-colors",
               active ? "bg-white text-ink" : "text-white/60",
             )}
           >

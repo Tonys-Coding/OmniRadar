@@ -22,8 +22,9 @@
   --color-canvas: #ffffff;
   --color-surface: #f4f4f6;
   --color-line: #ebebef;
-  --color-muted: #8b8b94;
-  --color-faint: #b9b9c0;
+  /* Secondary and tertiary text, both ≥4.5:1 on white. */
+  --color-muted: #646470;
+  --color-faint: #737380;
   --color-danger: #e5484d;
   --color-success: #2fb57c;
   /* Logo colors (from the OmniRadar artwork). */
@@ -33,11 +34,12 @@
   --radius-card: 28px;
   --radius-canvas: 36px;
 
-  --animate-fade-up: fade-up 0.35s ease-out both;
+  /* Overlays only (sheets, menus, popovers): state changes, not page loads. */
+  --animate-fade-up: fade-up 0.2s cubic-bezier(0.16, 1, 0.3, 1) both;
   @keyframes fade-up {
     from {
       opacity: 0;
-      transform: translateY(6px);
+      transform: translateY(4px);
     }
     to {
       opacity: 1;
@@ -77,6 +79,28 @@
   body {
     @apply bg-ink text-ink antialiased;
     font-feature-settings: "tnum" 0;
+    caret-color: var(--color-brand-ink);
+    accent-color: var(--color-brand-ink);
+  }
+  /* Browser surfaces themed from the palette. */
+  ::selection {
+    background: var(--color-brand-soft);
+    color: var(--color-ink);
+  }
+  .card-dark ::selection {
+    background: var(--color-brand-deep);
+    color: #fff;
+  }
+  ::placeholder {
+    color: var(--color-muted);
+    opacity: 1;
+  }
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-line) transparent;
+  }
+  a {
+    text-underline-offset: 0.2em;
   }
   /* Tabular figures wherever we show money so columns line up. */
   .tabular {

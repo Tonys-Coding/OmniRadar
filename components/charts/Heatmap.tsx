@@ -71,7 +71,7 @@ export function Heatmap({ days, weekStart = "monday" }: { days: DayTotal[]; week
         )}
       </p>
       <div className="flex gap-1.5">
-        <div className="grid grid-rows-7 gap-1.5 pr-1 text-[10px] text-faint">
+        <div className="grid grid-rows-7 gap-1.5 pr-1 text-[11px] text-faint">
           {WEEKDAYS.map((d, i) => (
             <span key={i} className="flex items-center leading-none">
               {i % 2 === 0 ? d : ""}

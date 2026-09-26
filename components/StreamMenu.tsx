@@ -1,6 +1,6 @@
 "use client";
 
-import { EllipsisVertical } from "lucide-react";
+import { Check, EllipsisVertical } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { api, refreshAll } from "@/lib/client/api";
 import type { Stream } from "@/lib/client/types";
@@ -95,11 +95,7 @@ export function StreamMenu({ stream }: { stream: Stream }) {
                 className="flex w-full items-center justify-between rounded-2xl px-3 py-2 text-sm hover:bg-surface focus-visible:bg-surface"
               >
                 {KIND_LABEL[k]}
-                {stream.effective_kind === k ? (
-                  <span className="text-brand-ink" aria-hidden="true">
-                    ✓
-                  </span>
-                ) : null}
+                {stream.effective_kind === k ? <Check className="size-4 text-brand-ink" aria-hidden="true" /> : null}
               </button>
             ))}
           </div>

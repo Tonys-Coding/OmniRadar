@@ -44,6 +44,13 @@
   - Format numbers and dates with `lib/format.ts` (`LOCALE`, `percent`, `plural`, `fullDate`, `dateTime`). Never hard-code "en-US" or `toFixed` in components.
   - Every interactive chart must also work from the keyboard. Give `Segmented` a `label`, and give `AllocationBar` a `label`.
   - Copy uses curly apostrophes (’), a trailing "…" on loading text and placeholders, and sentence case.
+  - Visual floor (from the impeccable polish pass, 2026-09-26):
+    - text is `muted` (#646470) or `faint` (#737380), both at least 4.5:1 on white; on dark surfaces use at least 55% white
+    - 11px is the smallest text size
+    - icons are Lucide only, never Unicode glyphs
+    - no decorative glows or blur
+    - no page-load animations; `animate-fade-up` is for overlays only
+    - the dashboard grid is 6 columns at md and 12 at xl
 - **Money sign convention:** Plaid's: **positive amount = money out, negative = money in.** The UI flips it for display (`txnAmount`).
 
 ## Critical Rules

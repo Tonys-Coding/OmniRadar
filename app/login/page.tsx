@@ -94,7 +94,7 @@ export default function LoginPage() {
           <LoginForm />
         </Suspense>
       </div>
-      <p className="relative mt-6 text-sm text-white/40">OmniRadar · private finance dashboard</p>
+      <p className="relative mt-6 text-sm text-white/55">OmniRadar · private finance dashboard</p>
     </main>
   );
 }
