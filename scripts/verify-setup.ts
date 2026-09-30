@@ -6,7 +6,7 @@
  * Prints values only as present/absent, never the secrets themselves.
  */
 import { createClient } from "@supabase/supabase-js";
-import { CountryCode } from "plaid";
+import { CountryCode, Products } from "plaid";
 import { decryptSecret, encryptSecret } from "@/lib/crypto";
 import { validateEnv, type Env } from "@/lib/env";
 import { plaid, plaidError } from "@/lib/plaid";
@@ -135,15 +135,90 @@ async function checkPlaid(e: Env) {
     const res = await plaid().institutionsGet({ count: 1, offset: 0, country_codes: [CountryCode.Us] });
     pass(`Keys accepted (${res.data.total.toLocaleString()} US institutions available)`);
   } catch (error) {
+    reportPlaidFailure(e, error);
+    return;
+  }
+
+  // The same Link token the app asks for: proves Transactions is enabled for this environment.
+  try {
+    await plaid().linkTokenCreate({
+      user: { client_user_id: "omniradar-verify" },
+      client_name: "OmniRadar",
+      language: "en",
+      country_codes: [CountryCode.Us],
+      products: [Products.Transactions],
+      transactions: { days_requested: 730 },
+      ...(e.PLAID_REDIRECT_URI && { redirect_uri: e.PLAID_REDIRECT_URI }),
+    });
+    pass("Link token created with Transactions (the Connect bank button will work)");
+  } catch (error) {
     const body = plaidError(error);
-    if (body?.error_code === "INVALID_API_KEYS") {
-      fail(
-        "Plaid rejected the client_id/secret",
-        `Make sure PLAID_SECRET is the ${e.PLAID_ENV} secret (sandbox and production secrets differ)`,
-      );
-    } else {
-      fail(`Plaid call failed: ${body?.error_code ?? (error as Error).message}`, body?.error_message);
+    fail(
+      `Could not create a Link token: ${body?.error_code ?? (error as Error).message}`,
+      body?.error_code === "INVALID_FIELD" && e.PLAID_REDIRECT_URI
+        ? "Add PLAID_REDIRECT_URI to Plaid dashboard -> Developers -> API -> Allowed redirect URIs, or leave it blank"
+        : body?.error_message,
+    );
+  }
+
+  if (e.PLAID_ENV === "production" && !e.PLAID_REDIRECT_URI) {
+    pass("No redirect URI: OAuth banks (Bank of America, Chase, …) open their login in a pop-up");
+  }
+}
+
+function reportPlaidFailure(e: Env, error: unknown) {
+  const body = plaidError(error);
+  if (body?.error_code === "INVALID_API_KEYS") {
+    fail("Plaid rejected the client_id/secret", `Make sure PLAID_SECRET is the ${e.PLAID_ENV} secret (sandbox and production secrets differ)`);
+  } else {
+    fail(`Plaid call failed: ${body?.error_code ?? (error as Error).message}`, body?.error_message);
+  }
+}
+
+/** Linked banks must belong to the current PLAID_ENV: a sandbox bank can't sync with production keys (and mixes fake data in). */
+async function checkLinkedBanks(e: Env) {
+  section("5. Linked banks");
+  const admin = createClient<Database>(e.NEXT_PUBLIC_SUPABASE_URL.replace(/\/$/, ""), e.SUPABASE_SECRET_KEY, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+  const { data: items, error } = await admin
+    .from("plaid_items")
+    .select("id, plaid_item_id, institution_id, institution_name, status, created_at, plaid_item_secrets(access_token_ciphertext)")
+    .order("created_at");
+  if (error) {
+    fail(`Could not read linked banks: ${error.message}`);
+    return;
+  }
+  if (items.length === 0) {
+    pass(`No banks linked yet${e.PLAID_ENV === "production" ? ": ready for your first real bank" : ""}`);
+    return;
+  }
+  for (const item of items) {
+    const name = item.institution_name ?? "Unknown bank";
+    const secret = Array.isArray(item.plaid_item_secrets) ? item.plaid_item_secrets[0] : item.plaid_item_secrets;
+    let tokenEnv = "unknown";
+    try {
+      const token = secret ? decryptSecret(secret.access_token_ciphertext, e.TOKEN_ENCRYPTION_KEY, item.plaid_item_id) : "";
+      tokenEnv = token.startsWith("access-sandbox-") ? "sandbox" : token.startsWith("access-production-") ? "production" : "unknown";
+    } catch {
+      fail(`${name}: its access token can't be decrypted`, "TOKEN_ENCRYPTION_KEY changed since it was linked; remove the bank and link it again");
+      continue;
     }
+    if (tokenEnv === e.PLAID_ENV) pass(`${name} (${tokenEnv}, status ${item.status})`);
+    else if (tokenEnv === "sandbox")
+      fail(
+        `${name} is a sandbox test bank, but PLAID_ENV=production`,
+        "Its fake data would mix with your real accounts and it can't sync. Accounts -> Remove bank… (safe: it deletes only that bank's data)",
+      );
+    else warn(`${name} was linked in ${tokenEnv}, but PLAID_ENV=${e.PLAID_ENV}`, "It won't sync until PLAID_ENV matches");
+  }
+
+  const byInstitution = new Map<string, number>();
+  for (const item of items) if (item.institution_id) byInstitution.set(item.institution_id, (byInstitution.get(item.institution_id) ?? 0) + 1);
+  for (const [institutionId, count] of byInstitution) {
+    if (count < 2) continue;
+    const name = items.find((i) => i.institution_id === institutionId)?.institution_name ?? institutionId;
+    warn(`${name} is linked ${count} times`, "Every account and transaction is counted once per link, so totals are inflated. Remove the extra link on Accounts");
   }
 }
 
@@ -154,6 +229,7 @@ async function main() {
     checkEncryption(e);
     await checkSupabase(e);
     await checkPlaid(e);
+    await checkLinkedBanks(e);
   }
 
   console.log("");

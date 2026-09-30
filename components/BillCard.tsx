@@ -4,8 +4,11 @@ import { Logo, cx } from "@/components/ui";
 import type { Bill } from "@/lib/client/types";
 import { daysFromToday, dueLabel, FREQUENCY_LABEL, moneyParts, shortDate, tidyName } from "@/lib/format";
 
-/** Dark upcoming-charge card, styled after the "Trending" stock cards. */
-export function BillCard({ bill, featured }: { bill: Bill; featured?: boolean }) {
+/**
+ * Dark upcoming-charge card, styled after the "Trending" stock cards. Fixed
+ * width for a sideways-scrolling row; `fluid` fills a grid cell instead.
+ */
+export function BillCard({ bill, featured, fluid }: { bill: Bill; featured?: boolean; fluid?: boolean }) {
   const name = tidyName(bill.merchant_name ?? bill.description);
   const days = bill.predicted_next_date ? daysFromToday(bill.predicted_next_date) : 0;
   const [whole, cents] = moneyParts(bill.expected_amount);
@@ -16,7 +19,8 @@ export function BillCard({ bill, featured }: { bill: Bill; featured?: boolean })
   return (
     <article
       className={cx(
-        "relative flex w-[208px] shrink-0 snap-start flex-col rounded-[24px] p-4 text-white",
+        "relative flex flex-col rounded-[24px] p-4 text-white",
+        fluid ? "min-w-0" : "w-[208px] shrink-0 snap-start",
         featured ? "bg-ink" : "bg-ink-2",
       )}
     >
@@ -27,7 +31,7 @@ export function BillCard({ bill, featured }: { bill: Bill; featured?: boolean })
           <p className="truncate text-xs text-white/50">{FREQUENCY_LABEL[bill.frequency]}</p>
         </div>
       </div>
-      <p className="mt-6 text-[28px] leading-none font-medium tracking-tight tabular">
+      <p className={cx("text-[28px] leading-none font-medium tracking-tight tabular", fluid ? "mt-4" : "mt-6")}>
         {whole}
         <span className="text-lg text-white/70">{cents}</span>
       </p>

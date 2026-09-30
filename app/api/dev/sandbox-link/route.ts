@@ -17,6 +17,8 @@ const Body = z.object({
    * transactions (paychecks, subscriptions) and is best for testing.
    */
   username: z.string().default("user_transactions_dynamic"),
+  /** Link the same test bank again. Off by default: a second copy doubles every total. */
+  allow_duplicate: z.boolean().default(false),
 });
 
 /**
@@ -25,7 +27,7 @@ const Body = z.object({
  */
 export const POST = withAuth(async (request, auth) => {
   if (env().PLAID_ENV !== "sandbox") throw new HttpError(404, "Not found");
-  const { institution_id, username } = await readJson(request, Body);
+  const { institution_id, username, allow_duplicate } = await readJson(request, Body);
 
   const { data } = await plaid().sandboxPublicTokenCreate({
     institution_id,
@@ -38,7 +40,7 @@ export const POST = withAuth(async (request, auth) => {
     },
   });
 
-  const item = await exchangePublicToken(auth.userId, data.public_token, true);
+  const item = await exchangePublicToken(auth.userId, data.public_token, allow_duplicate);
   const sync = await syncItem(item.id, "link", { waitForData: true });
   return json({ item: { id: item.id, institution_name: item.institution_name }, sync }, { status: 201 });
 });

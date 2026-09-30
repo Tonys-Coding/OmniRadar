@@ -18,7 +18,7 @@ Backend and UI are built and verified against Plaid sandbox, on desktop and phon
 | Dashboard | Today / this week / this month, current balance, balance or net-worth history, spending heatmap, upcoming bills, recent transactions, income vs spending, categories, fixed costs, spending map |
 | Transactions | Search and filters, grouped by day, notes |
 | Spending | Month view: vs last month, categories, top merchants, heatmap, map |
-| Subscriptions | Monthly/yearly cost, possibly-cancelled, fix misclassifications |
+| Subscriptions | Costs, "worth a look" insights (duplicates, price changes, renewals), next 30 days, spend history, cancel planner, fix misclassifications |
 | Bills | Upcoming charges, calendar of bills and paydays |
 | Accounts | Net worth, banks and accounts, connect / repair / remove via Plaid Link |
 | Settings | Profile, privacy mode, cents, week start, default chart range, monthly budget, alert thresholds, password, sign out everywhere, CSV export, delete all data |
@@ -28,13 +28,35 @@ switch between States and Cities; click a state to zoom in and list its cities.
 
 ## Going live with your real banks
 
-1. Remove the sandbox test bank (Accounts -> First Platypus Bank -> Remove)
-2. In `.env.local`, set `PLAID_ENV=production` and `PLAID_SECRET` to your **production** secret
-3. Restart the dev server, open Accounts, and click **Connect a bank**
+Plaid's free **Trial plan** gives Production access to real banks, including Bank of America,
+Chase, and Capital One, without the full Production application. It allows **10 connected
+banks in total, and removing one does not free its slot**, so link each bank once.
 
-Banks like Bank of America and Capital One sign you in on their own site (OAuth) inside the
-Plaid popup. If Plaid says a bank is unavailable, check your Plaid dashboard for any remaining
-production or OAuth registration steps.
+1. **Clear out the sandbox data.** On Accounts, use **Remove bank…** on every First Platypus
+   Bank. That deletes only its fake accounts and transactions.
+2. **Get the production secret.** Go to Plaid dashboard -> Developers -> Keys. The client ID
+   stays the same, but the secret for Production is different from the Sandbox one.
+3. **Switch `.env.local`:**
+   - `PLAID_ENV=production`
+   - `PLAID_SECRET=<production secret>`
+   - Leave `PLAID_REDIRECT_URI` **blank** for desktop testing. Bank of America's login then
+     opens in a pop-up, so allow pop-ups for `localhost:3100`. In Production, Plaid only
+     accepts `https://` redirect URIs, so `http://localhost` is rejected (the env check tells
+     you if you set one).
+   - Leave `PLAID_WEBHOOK_URL` blank locally.
+4. **Check the setup.** Run `npm run verify`. Plaid must say "Link token created with
+   Transactions", and "Linked banks" must list no sandbox banks.
+5. **Restart `npm run dev`**, sign in, open Accounts, and click **Connect a bank**.
+   - Search for Bank of America and sign in on BofA's own page in the pop-up.
+   - Pick the accounts to share.
+   - About the last 30 days of transactions arrive within a minute.
+   - The rest of the 2-year history loads in the background over the next few minutes. With
+     no webhook set, the app keeps syncing for up to 6 minutes. Reload to see it.
+
+If Plaid says Bank of America is unavailable, open the Plaid dashboard and finish whatever it
+lists under your Production or OAuth access. If a bank later shows "Reconnect needed", use its
+**Fix connection** button (Plaid update mode) rather than removing and re-adding it. Removing
+and re-adding would use up another Trial slot.
 
 ## Setup
 
@@ -150,7 +172,7 @@ Amounts follow Plaid: **positive = money out, negative = money in.**
 | Script | What it does |
 | --- | --- |
 | `npm run dev` | Dev server on http://localhost:3100 |
-| `npm run verify` | Check Supabase, Plaid, and encryption settings |
+| `npm run verify` | Check Supabase, Plaid (keys and Link token), encryption, and that linked banks match `PLAID_ENV` |
 | `npm run dev-token` | Write a 1-hour API token to `.dev-token` |
 | `npm test` | Unit tests |
 | `npm run typecheck` | TypeScript check |

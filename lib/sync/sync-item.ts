@@ -173,6 +173,25 @@ export async function syncItem(itemId: string, trigger: SyncTrigger, opts: { wai
   return result;
 }
 
+/** How often, and for how long, to re-sync a new bank while Plaid loads its history. */
+const HISTORY_POLL_MS = 30_000;
+const HISTORY_POLL_TRIES = 12;
+
+/**
+ * First sync after linking. A real bank returns about 30 days of transactions
+ * first and the rest of the 2-year history minutes later, normally announced by
+ * a HISTORICAL_UPDATE webhook. Without a webhook (local testing), keep syncing
+ * every 30 seconds for up to 6 minutes until the history is complete.
+ */
+export async function syncNewItem(itemId: string, opts: { webhooks: boolean }): Promise<SyncResult> {
+  let result = await syncItem(itemId, "link", { waitForData: true });
+  for (let i = 0; !opts.webhooks && result.status === "good" && result.update_status !== "HISTORICAL_UPDATE_COMPLETE" && i < HISTORY_POLL_TRIES; i++) {
+    await sleep(HISTORY_POLL_MS);
+    result = await syncItem(itemId, "link");
+  }
+  return result;
+}
+
 /** Sync several items one after another (keeps Plaid rate limits happy). */
 export async function syncItems(itemIds: string[], trigger: SyncTrigger) {
   const results: SyncResult[] = [];

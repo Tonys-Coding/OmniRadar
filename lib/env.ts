@@ -37,6 +37,15 @@ export const envSchema = z.object({
   CRON_SECRET: z
     .string({ error: "is missing (generate with: openssl rand -hex 32)" })
     .min(32, "must be at least 32 characters (generate with: openssl rand -hex 32)"),
+}).superRefine((e, ctx) => {
+  // Plaid only allows http://localhost redirect URIs in Sandbox.
+  if (e.PLAID_ENV === "production" && e.PLAID_REDIRECT_URI?.startsWith("http://")) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["PLAID_REDIRECT_URI"],
+      message: "must use https:// in production (leave it blank to test on desktop: OAuth banks open in a pop-up without it)",
+    });
+  }
 });
 
 export type Env = z.infer<typeof envSchema>;

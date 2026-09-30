@@ -47,6 +47,15 @@ describe("validateEnv", () => {
     expect(result.ok).toBe(false);
   });
 
+  it("requires an https redirect URI in production, but allows localhost in sandbox", () => {
+    const local = { PLAID_REDIRECT_URI: "http://localhost:3100/oauth-return" };
+    expect(validateEnv({ ...valid, ...local }).ok).toBe(true);
+    const prod = validateEnv({ ...valid, ...local, PLAID_ENV: "production" });
+    expect(prod.ok).toBe(false);
+    expect(!prod.ok && prod.problems[0]).toMatch(/^PLAID_REDIRECT_URI must use https/);
+    expect(validateEnv({ ...valid, PLAID_ENV: "production", PLAID_REDIRECT_URI: "https://example.com/oauth-return" }).ok).toBe(true);
+  });
+
   it("rejects an unknown PLAID_ENV", () => {
     const result = validateEnv({ ...valid, PLAID_ENV: "development" });
     expect(result.ok).toBe(false);

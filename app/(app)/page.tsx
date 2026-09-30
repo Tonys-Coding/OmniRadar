@@ -354,12 +354,16 @@ function ActivityCard() {
   );
 }
 
+/** Bills shown as cards on the dashboard; the rest are one tap away on /bills. */
+const UPCOMING_MAX = 6;
+
 function UpcomingCard() {
   const { data } = useApi<BillsResponse>("/api/bills?days=30");
+  const shown = data?.bills.slice(0, UPCOMING_MAX) ?? [];
+  const more = (data?.bills.length ?? 0) - shown.length;
   return (
-    <Card className="overflow-hidden !px-0 md:col-span-3 xl:col-span-4">
+    <Card className="md:col-span-3 xl:col-span-4">
       <CardHeader
-        className="px-5 sm:px-6"
         title="Upcoming bills"
         action={
           <Link href="/bills" aria-label="View all bills" className="text-sm text-muted hover:text-ink">
@@ -369,28 +373,38 @@ function UpcomingCard() {
       />
       {data ? (
         <>
-          <p className="mt-4 px-5 text-sm text-muted sm:px-6">
+          <p className="mt-4 text-sm text-muted">
             <span className="text-ink tabular">{money(data.totals.amount)}</span> due in the next 30 days · {plural(data.totals.count, "charge")}
           </p>
-          {data.bills.length ? (
-            <div
-              tabIndex={0}
-              role="region"
-              aria-label="Upcoming bills, scroll sideways for more"
-              className="no-scrollbar mt-4 flex snap-x gap-3 overflow-x-auto rounded-3xl px-5 pb-1 focus-visible:outline-offset-[-2px] sm:px-6"
-            >
-              {data.bills.map((b, i) => (
-                <BillCard key={b.id} bill={b} featured={i === 0} />
+          {shown.length ? (
+            <ul className="mt-4 grid grid-cols-[repeat(auto-fill,minmax(136px,1fr))] gap-3">
+              {shown.map((b, i) => (
+                <li key={b.id} className="min-w-0">
+                  <BillCard bill={b} featured={i === 0} fluid />
+                </li>
               ))}
-            </div>
+              {more > 0 ? (
+                <li className="min-w-0">
+                  <Link
+                    href="/bills"
+                    className="flex h-full min-h-32 flex-col items-center justify-center rounded-[24px] bg-surface p-4 text-center text-sm hover:bg-line"
+                  >
+                    <span className="text-[28px] leading-none font-medium tabular">+{more}</span>
+                    <span className="mt-2 text-muted">more on Bills</span>
+                  </Link>
+                </li>
+              ) : null}
+            </ul>
           ) : (
             <EmptyState title="Nothing due in the next 30 days" />
           )}
         </>
       ) : (
-        <div className="mt-5 flex gap-3 px-6">
-          <Skeleton className="h-52 w-52" />
-          <Skeleton className="h-52 w-52" />
+        <div className="mt-5 grid grid-cols-2 gap-3">
+          <Skeleton className="h-40 w-full" />
+          <Skeleton className="h-40 w-full" />
+          <Skeleton className="h-40 w-full" />
+          <Skeleton className="h-40 w-full" />
         </div>
       )}
     </Card>
