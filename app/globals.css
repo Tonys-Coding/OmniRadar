@@ -135,3 +135,37 @@
     display: none;
   }
 }
+
+/* Transactions list: one grid, three layouts. Stacked on phones, two lines on
+   tablets and small laptops, one full row per transaction on wide screens.
+   A component layer, so utilities like `hidden xl:grid` still win. */
+@layer components {
+  .txn-row {
+    display: grid;
+    align-items: start;
+    column-gap: 0.875rem;
+    row-gap: 0.25rem;
+    grid-template-columns: 40px minmax(0, 1fr) auto;
+    grid-template-areas:
+      "logo merchant amount"
+      "logo category account"
+      "logo details details"
+      "logo note note";
+  }
+  @media (width >= 48rem) {
+    .txn-row {
+      column-gap: 1.25rem;
+      grid-template-columns: 40px minmax(0, 2fr) minmax(0, 1.2fr) minmax(0, 1.1fr) 8rem;
+      grid-template-areas:
+        "logo merchant category account amount"
+        "logo note details details amount";
+    }
+  }
+  @media (width >= 80rem) {
+    .txn-row {
+      align-items: center;
+      grid-template-columns: 40px minmax(0, 2.2fr) minmax(0, 1.3fr) minmax(0, 1.2fr) minmax(0, 1.2fr) minmax(0, 1.6fr) 8.5rem;
+      grid-template-areas: "logo merchant category account details note amount";
+    }
+  }
+}

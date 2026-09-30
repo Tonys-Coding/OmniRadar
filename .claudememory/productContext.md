@@ -22,7 +22,12 @@ There is one user type, the owner. Sign-ups are disabled and the account is crea
   - monthly fixed costs
   - the interactive spending map
 - **Cards (`/cards`):** every checking, savings, and credit account as a card (bank color, network logo, last 4, balance and available or limit), with totals, a detail panel (balances, credit used, include-in-totals, pick the card network), and recent activity. Tap a card on the dashboard to open it here.
-- **Transactions:** search and filter (money in/out, category, account, date range), grouped by day, with a detail sheet for adding notes.
+- **Transactions:** a dense, full-width list with every detail inline (no detail sheet):
+  - each row shows merchant, bank description, category and subcategory, account, channel, location or website, status, authorized date, and an inline note editor
+  - clicking a merchant, category, or account filters to it; search matches merchant, description, and notes (with highlighting); `/` focuses search
+  - filters: money in/out, category, account, date range (presets, this or last month, custom dates), status, channel, and amount range; sort by newest, oldest, biggest charges, or biggest deposits
+  - totals over every matching transaction (money in, out, net, largest charge), not just the loaded page
+  - "Export CSV" downloads exactly the filtered view
 - **Spending:** month view compared with the previous month, daily average and projection, categories with changes, top merchants, a 26-week heatmap, and the full map.
 - **Spending map:**
   - hex-dot US map with States and Cities views

@@ -49,9 +49,31 @@ export type Transaction = {
   pending: boolean;
   user_category_id: string | null;
   notes: string | null;
+  /** Plaid's merchant location, when known. */
+  location: { city?: string | null; region?: string | null; address?: string | null; country?: string | null } | null;
   accounts: { name: string; mask: string | null; type: string } | null;
 };
-export type TransactionsResponse = { transactions: Transaction[]; total: number; limit: number; offset: number; has_more: boolean };
+export type TransactionSummary = {
+  count: number;
+  money_in: number;
+  money_out: number;
+  net: number;
+  count_in: number;
+  count_out: number;
+  pending: number;
+  largest_out: { name: string; amount: number; date: string } | null;
+  first_date: string | null;
+  last_date: string | null;
+};
+export type TransactionsResponse = {
+  transactions: Transaction[];
+  total: number;
+  limit: number;
+  offset: number;
+  has_more: boolean;
+  /** Totals over every matching transaction (first page only). */
+  summary?: TransactionSummary;
+};
 
 export type Stream = {
   id: string;

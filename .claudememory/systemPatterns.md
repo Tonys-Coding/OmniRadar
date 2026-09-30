@@ -51,6 +51,7 @@
     - no decorative glows or blur
     - no page-load animations; `animate-fade-up` is for overlays only
     - the dashboard grid is 6 columns at md and 12 at xl
+- **Transaction filters are shared:** `lib/transactions-query.ts` (`TxnFilters`, `applyTxnFilters`, `txnOrder`) backs both `/api/transactions` and `/api/export/transactions`, so exports match the page. Totals come from `summarizeTransactions` (`lib/finance/transactions.ts`) on the first page only. Rows use `components/TransactionLine.tsx` with the `.txn-row` grid in `globals.css` (stacked on phones, two lines at md, one row at xl).
 - **Money sign convention:** Plaid's: **positive amount = money out, negative = money in.** The UI flips it for display (`txnAmount`).
 
 ## Critical Rules
