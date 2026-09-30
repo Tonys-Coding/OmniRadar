@@ -109,7 +109,7 @@ Amounts follow Plaid: **positive = money out, negative = money in.**
 | PATCH | `/api/transactions/:id` | `{notes, user_category_id}` |
 | GET | `/api/recurring` | All recurring streams (`kind direction include_inactive include_ignored`) |
 | PATCH | `/api/recurring/:id` | `{kind_override, is_ignored}` to fix a misclassification |
-| GET | `/api/subscriptions` | Active subscriptions with monthly/yearly totals |
+| GET | `/api/subscriptions` | Active, stopped, and hidden subscriptions with totals; per stream: total spent, charge count, latest price change, duplicate group; plus 12 months of subscription spend |
 | GET | `/api/bills?days=30` | Bills and subscriptions due soon |
 | GET | `/api/net-worth?range=3M` | Net worth now, plus daily cash and net-worth history (`1W 1M 3M 6M 1Y ALL`) |
 | GET | `/api/spending/daily?days=84` | Spending and income per day (heatmap) |

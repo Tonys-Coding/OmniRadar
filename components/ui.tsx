@@ -1,6 +1,6 @@
 "use client";
 
-import { LoaderCircle } from "lucide-react";
+import { ChevronDown, LoaderCircle } from "lucide-react";
 import { useState } from "react";
 import { initials, moneyParts } from "@/lib/format";
 
@@ -252,5 +252,39 @@ export function ErrorNote({ error, onRetry }: { error: unknown; onRetry?: () => 
         </button>
       ) : null}
     </div>
+  );
+}
+
+/** A native <select> styled as a pill; dark when it holds an applied filter. */
+export function SelectPill({
+  value,
+  onChange,
+  label,
+  active,
+  children,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  label: string;
+  /** Highlight as an applied filter (defaults to "has a value"). */
+  active?: boolean;
+  children: React.ReactNode;
+}) {
+  const on = active ?? Boolean(value);
+  return (
+    <label className="relative shrink-0">
+      <span className="sr-only">{label}</span>
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className={cx(
+          "h-10 appearance-none rounded-full py-0 pr-9 pl-4 text-sm font-medium outline-none ring-brand ring-offset-2 focus-visible:ring-2",
+          on ? "bg-ink text-white" : "bg-surface text-ink",
+        )}
+      >
+        {children}
+      </select>
+      <ChevronDown aria-hidden="true" className={cx("pointer-events-none absolute top-1/2 right-3.5 size-4 -translate-y-1/2", on ? "text-white" : "text-muted")} />
+    </label>
   );
 }

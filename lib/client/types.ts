@@ -102,7 +102,23 @@ export type Stream = {
   logo_url: string | null;
   website: string | null;
 };
-export type SubscriptionsResponse = { subscriptions: Stream[]; totals: { count: number; monthly: number; yearly: number } };
+export type Charge = { date: string; amount: number };
+export type Subscription = Stream & {
+  /** Past charges, oldest first (positive amounts). */
+  charges: Charge[];
+  total_spent: number;
+  price_change: { from: number; to: number; date: string } | null;
+  /** Shared by subscriptions that look like the same service charged more than once. */
+  duplicate_key: string | null;
+};
+export type SubscriptionsResponse = {
+  subscriptions: Subscription[];
+  stopped: Subscription[];
+  hidden: Stream[];
+  totals: { count: number; monthly: number; yearly: number };
+  /** Subscription spend per month, last 12 months, oldest first. */
+  history: { month: string; amount: number }[];
+};
 export type Bill = Stream & { expected_amount: number; overdue: boolean };
 export type BillsResponse = { window: { start: string; end: string; days: number }; bills: Bill[]; totals: { count: number; amount: number } };
 export type RecurringResponse = { streams: Stream[] };

@@ -75,7 +75,8 @@ export const times = (n: number) => `${oneDecimal.format(n)}×`;
 export const plural = (n: number, one: string, many = `${one}s`) => `${n.toLocaleString(LOCALE)} ${n === 1 ? one : many}`;
 
 const parse = (iso: string) => new Date(`${iso.slice(0, 10)}T12:00:00`);
-const localToday = () => {
+/** The viewer's local date as YYYY-MM-DD. Browser clock: render after mount only. */
+export const localToday = () => {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 };

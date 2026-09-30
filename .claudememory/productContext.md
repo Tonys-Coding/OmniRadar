@@ -34,7 +34,14 @@ There is one user type, the owner. Sign-ups are disabled and the account is crea
   - zoom with buttons, pinch, or Ctrl/⌘ + scroll; drag to pan
   - click any state to zoom in and list its cities; click outside it to return to 1×
   - dots in a selected state are shaded by how much was spent near each city
-- **Subscriptions and Bills:** detected recurring charges, their monthly and yearly cost, "possibly cancelled" streams, a calendar of charges and paydays, and a menu to reclassify or hide a stream.
+- **Subscriptions:**
+  - tiles: monthly and yearly cost, due in the next 30 days, actually charged in the last 12 months
+  - "Worth a look" insights: likely duplicate services (priced as the extra yearly cost), recent price increases or cuts, quarterly or yearly renewals within 30 days, and streams that stopped charging
+  - a "Next 30 days" timeline of expected charges
+  - detailed rows: category, account, total spent, charge count, subscribed since, next charge, yearly cost and share; sort and account filter; a link to every charge on Transactions; the merchant's website
+  - a cancel planner (scissors on each row, kept in `?cut=`) showing monthly, yearly, and 5-year savings; it never cancels anything
+  - cost by category, a 12-month subscription-spend bar chart, and the stopped and hidden lists
+- **Bills:** upcoming bills and subscriptions, and a calendar of charges and paydays. Both pages have a menu to reclassify or hide a stream.
 - **Settings:**
   - display name
   - privacy mode (blur amounts), show cents, week start, default chart range

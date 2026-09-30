@@ -138,3 +138,28 @@ export async function loadStreams(
     };
   });
 }
+
+/** Every charge (date and positive amount) behind each stream, oldest first. */
+export async function loadStreamCharges(supabase: UserClient, streamIds: string[]): Promise<Map<string, { date: string; amount: number }[]>> {
+  const out = new Map<string, { date: string; amount: number }[]>();
+  if (streamIds.length === 0) return out;
+  const { data: streams, error } = await supabase.from("recurring_streams").select("id, transaction_ids").in("id", streamIds);
+  if (error) throw error;
+
+  const ids = [...new Set(streams.flatMap((s) => s.transaction_ids))];
+  const byTxn = new Map<string, { date: string; amount: number }>();
+  for (let i = 0; i < ids.length; i += 100) {
+    const { data: rows, error: txnError } = await supabase
+      .from("transactions")
+      .select("plaid_transaction_id, date, amount")
+      .in("plaid_transaction_id", ids.slice(i, i + 100));
+    if (txnError) throw txnError;
+    for (const r of rows) byTxn.set(r.plaid_transaction_id, { date: r.date, amount: Math.abs(Number(r.amount)) });
+  }
+
+  for (const s of streams) {
+    const charges = s.transaction_ids.map((id) => byTxn.get(id)).filter((c): c is { date: string; amount: number } => !!c);
+    out.set(s.id, charges.sort((a, b) => a.date.localeCompare(b.date)));
+  }
+  return out;
+}

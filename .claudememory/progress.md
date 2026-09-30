@@ -1,6 +1,6 @@
 # Progress & Deployment Roadmap
 
-_Last updated: 2026-09-28_
+_Last updated: 2026-09-29_
 
 ## What is Working
 - [x] Database schema with RLS on every table (migration applied in Supabase, verified by `npm run verify`).
@@ -18,7 +18,8 @@ _Last updated: 2026-09-28_
 - [x] **Web Interface Guidelines pass** (2026-09-25): keyboard access for every chart and the map, focus rings, skip link, Sheet focus trap, reduced motion, URL-synced filters and ranges, hydration-safe dates, live regions, and copy fixes.
 - [x] Brand: the new radar logo, the Outfit wordmark, the teal accent palette, and the favicon.
 - [x] **Transactions redesign** (2026-09-28): the detail sheet is gone; full-width rows show every detail with inline notes, click-to-filter, status/channel/amount/custom-date filters, sorting, whole-set totals, and filtered CSV export. `components/Sheet.tsx` is now unused.
-- [x] `npm run build`, typecheck, and lint pass; 100 unit tests pass.
+- [x] **Subscriptions build-out** (2026-09-29): insights (duplicates, price changes, renewals, stopped), a 30-day timeline, detailed rows with total spent and history, sort and account filter, a cancel planner, cost by category, and a 12-month spend chart. The sandbox bank bills Spotify, Netflix, and OpenAI twice a month (the 24th and 25th), so all three show as possible duplicates.
+- [x] Typecheck and lint pass; 110 unit tests pass. The last full `npm run build` was on 2026-09-28 (run it again after stopping `next dev`).
 
 ## What is Broken / Tech Debt
 - [ ] **Card migration:** apply `supabase/migrations/20260925000000_card_branding.sql` in the SQL Editor. Until then `/api/cards` falls back to curated colors, and picking a card network returns 503. After applying it, the next sync of each bank caches its Plaid color and logo.

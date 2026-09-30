@@ -52,6 +52,7 @@
     - no page-load animations; `animate-fade-up` is for overlays only
     - the dashboard grid is 6 columns at md and 12 at xl
 - **Transaction filters are shared:** `lib/transactions-query.ts` (`TxnFilters`, `applyTxnFilters`, `txnOrder`) backs both `/api/transactions` and `/api/export/transactions`, so exports match the page. Totals come from `summarizeTransactions` (`lib/finance/transactions.ts`) on the first page only. Rows use `components/TransactionLine.tsx` with the `.txn-row` grid in `globals.css` (stacked on phones, two lines at md, one row at xl).
+- **Subscription insights** live in `lib/recurring/subscriptions.ts` (pure and browser-safe): `priceChange`, `findDuplicates` (by `serviceKey`), `monthlySpend`, `upcomingCharges`, and `buildInsights`. `/api/subscriptions` adds charges, total spent, price change, and duplicate group per stream via `loadStreamCharges`. Date-relative insights run in the browser after `useMounted()`. Subscription rows use the `.sub-row` grid in `globals.css` with container queries, so they respond to the card's width rather than the window's. `SelectPill` in `components/ui.tsx` is the shared pill-shaped `<select>`.
 - **Money sign convention:** Plaid's: **positive amount = money out, negative = money in.** The UI flips it for display (`txnAmount`).
 
 ## Critical Rules

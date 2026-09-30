@@ -1,11 +1,11 @@
 "use client";
 
-import { ArrowDownLeft, ArrowUpRight, ChevronDown, Download, Receipt, Scale, Search, TrendingUp, X } from "lucide-react";
+import { ArrowDownLeft, ArrowUpRight, Download, Receipt, Scale, Search, TrendingUp, X } from "lucide-react";
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import useSWRInfinite from "swr/infinite";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { TransactionColumns, TransactionLine, type RowFilterActions } from "@/components/TransactionLine";
-import { BigMoney, Button, cx, EmptyState, ErrorNote, Segmented, Skeleton } from "@/components/ui";
+import { BigMoney, Button, cx, EmptyState, ErrorNote, Segmented, SelectPill, Skeleton } from "@/components/ui";
 import { CATEGORY_LABEL } from "@/lib/categories-ui";
 import { api, useApi } from "@/lib/client/api";
 import { useQueryState } from "@/lib/client/hooks";
@@ -65,39 +65,6 @@ function rangeDates(range: RangeValue, from: string, to: string): { start?: stri
     default:
       return {};
   }
-}
-
-function Select({
-  value,
-  onChange,
-  label,
-  active,
-  children,
-}: {
-  value: string;
-  onChange: (v: string) => void;
-  label: string;
-  /** Highlight as an applied filter (defaults to "has a value"). */
-  active?: boolean;
-  children: React.ReactNode;
-}) {
-  const on = active ?? Boolean(value);
-  return (
-    <label className="relative shrink-0">
-      <span className="sr-only">{label}</span>
-      <select
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className={cx(
-          "h-10 appearance-none rounded-full py-0 pr-9 pl-4 text-sm font-medium outline-none ring-brand ring-offset-2 focus-visible:ring-2",
-          on ? "bg-ink text-white" : "bg-surface text-ink",
-        )}
-      >
-        {children}
-      </select>
-      <ChevronDown aria-hidden="true" className={cx("pointer-events-none absolute top-1/2 right-3.5 size-4 -translate-y-1/2", on ? "text-white" : "text-muted")} />
-    </label>
-  );
 }
 
 /** Min/max amount inputs; applied on Enter or when focus leaves. */
@@ -315,13 +282,13 @@ function TransactionsView() {
               value={direction}
               onChange={setDirection}
             />
-            <Select label="Sort" value={sort} active={sort !== "newest"} onChange={(v) => setSort(v as SortValue)}>
+            <SelectPill label="Sort" value={sort} active={sort !== "newest"} onChange={(v) => setSort(v as SortValue)}>
               {SORTS.map((s) => (
                 <option key={s.value} value={s.value}>
                   {s.label}
                 </option>
               ))}
-            </Select>
+            </SelectPill>
             <a
               href={`/api/export/transactions${filterParams ? `?${filterParams}` : ""}`}
               download
@@ -334,15 +301,15 @@ function TransactionsView() {
 
         {/* Filters */}
         <div className="no-scrollbar -mx-4 mt-3 flex items-center gap-2 overflow-x-auto px-4 lg:mx-0 lg:flex-wrap lg:px-0">
-          <Select label="Category" value={category} onChange={setCategory}>
+          <SelectPill label="Category" value={category} onChange={setCategory}>
             <option value="">All categories</option>
             {SPENDING_CATEGORIES.map((c) => (
               <option key={c} value={c}>
                 {CATEGORY_LABEL[c]}
               </option>
             ))}
-          </Select>
-          <Select label="Account" value={accountId} onChange={setAccountId}>
+          </SelectPill>
+          <SelectPill label="Account" value={accountId} onChange={setAccountId}>
             <option value="">All accounts</option>
             {accounts?.accounts.map((a) => (
               <option key={a.id} value={a.id}>
@@ -350,14 +317,14 @@ function TransactionsView() {
                 {a.mask ? ` ••${a.mask}` : ""}
               </option>
             ))}
-          </Select>
-          <Select label="Date range" value={range} active={range !== "90"} onChange={(v) => setRange(v as RangeValue)}>
+          </SelectPill>
+          <SelectPill label="Date range" value={range} active={range !== "90"} onChange={(v) => setRange(v as RangeValue)}>
             {RANGES.map((r) => (
               <option key={r.value} value={r.value}>
                 {r.label}
               </option>
             ))}
-          </Select>
+          </SelectPill>
           {range === "custom" ? (
             <div className="flex h-10 shrink-0 items-center gap-2 rounded-full bg-surface px-4 text-sm">
               <input type="date" value={from} max={to || undefined} onChange={(e) => setFrom(e.target.value)} aria-label="From date" className="bg-transparent outline-none" />
@@ -367,17 +334,17 @@ function TransactionsView() {
               <input type="date" value={to} min={from || undefined} onChange={(e) => setTo(e.target.value)} aria-label="To date" className="bg-transparent outline-none" />
             </div>
           ) : null}
-          <Select label="Status" value={status} onChange={(v) => setStatus(v as StatusValue)}>
+          <SelectPill label="Status" value={status} onChange={(v) => setStatus(v as StatusValue)}>
             <option value="">Any status</option>
             <option value="pending">Pending</option>
             <option value="posted">Posted</option>
-          </Select>
-          <Select label="Channel" value={channel} onChange={(v) => setChannel(v as ChannelValue)}>
+          </SelectPill>
+          <SelectPill label="Channel" value={channel} onChange={(v) => setChannel(v as ChannelValue)}>
             <option value="">Any channel</option>
             <option value="online">Online</option>
             <option value="in store">In store</option>
             <option value="other">Other</option>
-          </Select>
+          </SelectPill>
           <AmountRange
             min={min}
             max={max}
