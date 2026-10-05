@@ -1,6 +1,6 @@
 # Progress & Deployment Roadmap
 
-_Last updated: 2026-09-29_
+_Last updated: 2026-10-04_
 
 ## What is Working
 - [x] Database schema with RLS on every table (migration applied in Supabase, verified by `npm run verify`).
@@ -29,7 +29,11 @@ _Last updated: 2026-09-29_
 
 ## What is Broken / Tech Debt
 - [x] **Card migration:** applied (confirmed by `npm run verify` on 2026-09-29).
-- [ ] **Still on sandbox:** `PLAID_ENV=sandbox`, and the First Platypus Bank test bank is linked **twice**. Remove both on Accounts, then follow the README "Going live" steps for Bank of America.
+- [x] **Live on real banks** (2026-10-04):
+  - On Plaid's free Trial plan (applied via dashboard.plaid.com/trial-plan, auto-approved), with `PLAID_ENV=production` locally. The sandbox test banks were removed.
+  - **Bank of America** is linked: checking ••3281, savings ••4681, and credit card ••1903. It has 1,786 transactions from 2025-04-07 onward (about 18 months, all BofA provided) and reports `HISTORICAL_UPDATE_COMPLETE`.
+  - **1 of 10 Trial slots used.** Removing a bank doesn't free its slot.
+  - BofA consents expire after 12 months; use **Fix connection** then.
 - [x] **Supabase sign-ups:** off (confirmed by `npm run verify` on 2026-09-29).
 - [ ] **Timezone for "today":** `today()` uses the server's local timezone, which is CDT locally but UTC on Vercel, so "today" can shift on the server. Consider making the timezone a user setting.
 - [ ] **Plaid recurring add-on:** it may not be enabled on the production Trial plan. The local detector covers it, but check the results with real data.
