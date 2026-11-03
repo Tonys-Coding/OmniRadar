@@ -1,48 +1,25 @@
-# OmniRadar system diagram, drawn with sysketch (https://github.com/Tonys-Coding/sysketch).
-# Edit this file, then re-render with `npx sysketch render docs/architecture.yaml --png`
-# or ask Claude to redraw it with the sysketch connector.
-title: 'OmniRadar: How It Works (Nov 2026)'
-legend: true
+# OmniRadar high-level architecture, drawn with sysketch (https://github.com/Tonys-Coding/sysketch).
+# Re-render locally (applies the Plaid and Capital One logos from ./logos):
+#   npx sysketch render docs/architecture.yaml --png
+# The hosted sysketch connector can't read logo folders; drop the `logos:` line there,
+# and those two nodes fall back to generic icons.
+title: 'OmniRadar: High-Level Architecture'
+steps: false
+logos: ./logos
 nodes:
   you: user | You | browser or phone
-  ui: browser | Dashboard Pages | React 19 + SWR
-  link: plaid/auth | Plaid Link | bank picker widget
-  proxy: auth | proxy.ts | session check, redirects
-  api: server | API Routes | withAuth + zod, /api/*
-  sync: worker | Sync Engine | cursor-based, retries
-  fin: analytics | Finance Logic | cashflow, net worth, map
-  recur: calendar | Subscriptions & Bills | streams + local detector
-  vault: vault | Token Encryption | AES-256-GCM
-  sbauth: supabase | Supabase Auth | email + password, 1 user
-  db: postgres | Postgres | RLS on every table
-  plaid: plaid/cloud | Plaid API | Trial plan, production
-  boa: bankofamerica | Bank of America | checking, savings, card
-  cap1: capitalone/cloud | Capital One | not linked yet
-  hook: webhook | Plaid Webhooks | after deploy
-  cron: scheduler | Daily Cron | after deploy
+  app: nextjs | OmniRadar | Next.js 16 · pages, API, sync
+  supabase: supabase | Supabase | sign-in + Postgres (RLS)
+  plaid: plaid/cloud | Plaid | bank data API
+  boa: bankofamerica | Bank of America | linked
+  capitalone: capitalone/cloud | Capital One | next to link
+  vercel: vercel | Vercel | hosting + daily sync (planned)
 groups:
-  Your Device: [you, ui, link]
-  Next.js 16 Server: [proxy, api, sync, fin, recur, vault]
-  Supabase: [sbauth, db]
-  Plaid: [plaid]
-  Your Banks: [boa, cap1]
+  Your Banks: [boa, capitalone]
 edges:
-  - you > ui | open OmniRadar
-  - ui > proxy | every request
-  - proxy > sbauth | verify session [violet]
-  - ui => api | fetch /api/* (SWR)
-  - api > db | RLS-scoped reads [teal]
-  - api > fin | totals & charts
-  - api > recur | subscriptions, bills
-  - ui > link | Connect a bank [green]
-  - link > boa | sign in on BofA pop-up [green]
-  - link ..> api | one-time public token [green]
-  - api > plaid | exchange for access token [green]
-  - api > vault | encrypt token [amber]
-  - vault > db | plaid_item_secrets [amber]
-  - sync > plaid | accounts, balances, /transactions/sync
-  - plaid <> boa | bank data
-  - sync => db | upsert accounts & transactions
-  - cap1 ..> plaid | next to link [slate, dashed]
-  - hook ..> sync | new data (planned) [slate, dashed]
-  - cron ..> sync | daily refresh (planned) [slate, dashed]
+  - you => app | dashboard
+  - app <> supabase | your data, encrypted tokens [teal]
+  - app <> plaid | link banks, sync transactions [green]
+  - plaid <> boa | read-only access [green]
+  - plaid <..> capitalone | next [slate]
+  - vercel ..> app | deploy + cron (planned) [slate]
