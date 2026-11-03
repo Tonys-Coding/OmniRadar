@@ -9,6 +9,13 @@ bills, income, and savings in one place, in the spirit of Rocket Money.
 - **Database + auth**: [Supabase](https://supabase.com) (Postgres with row level security)
 - **App**: Next.js 16 (App Router, TypeScript), Tailwind CSS, custom SVG charts
 
+
+## Architecture
+
+![How OmniRadar works](docs/architecture.png)
+
+The diagram is generated from [`docs/architecture.yaml`](docs/architecture.yaml) with [sysketch](https://github.com/Tonys-Coding/sysketch).
+
 ## Status
 
 Backend and UI are built and verified against Plaid sandbox, on desktop and phone widths.
