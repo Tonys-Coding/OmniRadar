@@ -9,6 +9,62 @@ bills, income, and savings in one place, in the spirit of Rocket Money.
 - **Database + auth**: [Supabase](https://supabase.com) (Postgres with row level security)
 - **App**: Next.js 16 (App Router, TypeScript), Tailwind CSS, custom SVG charts
 
+## Screenshots
+
+All screenshots use a demo account filled with Plaid Sandbox test data, not real accounts.
+
+**Dashboard:** today, this week, and this month spending with a budget bar; the current balance;
+balance history; cards; a spending heatmap; upcoming bills; recent transactions; income vs
+spending; spending by category; fixed costs; and the spending map.
+
+![Dashboard](docs/screenshots/01-dashboard.png)
+
+**On a phone:** the whole app works in a phone browser, with a bottom tab bar.
+
+<p>
+  <img src="docs/screenshots/phone-01-dashboard.png" alt="Dashboard on a phone" width="19%">
+  <img src="docs/screenshots/phone-02-transactions.png" alt="Transactions on a phone" width="19%">
+  <img src="docs/screenshots/phone-03-cards.png" alt="Cards on a phone" width="19%">
+  <img src="docs/screenshots/phone-04-subscriptions.png" alt="Subscriptions on a phone" width="19%">
+  <img src="docs/screenshots/phone-05-bills.png" alt="Bills on a phone" width="19%">
+</p>
+
+**Spending map:** click a state to zoom in and see how much was spent near each city.
+
+![Spending map zoomed into California](docs/screenshots/04-spending-map-state.png)
+
+<details>
+<summary><b>More screens</b>: transactions, spending, subscriptions, bills, cards, accounts, settings</summary>
+
+**Transactions:** every detail inline, click-to-filter, totals across the whole filtered set, and CSV export.
+
+![Transactions](docs/screenshots/02-transactions.png)
+
+**Spending:** this month vs last month, daily average and projection, top merchants, categories, and a 26-week heatmap.
+
+![Spending](docs/screenshots/03-spending.png)
+
+**Subscriptions:** monthly and yearly cost, insights, a 30-day timeline, and a cancel planner (here, planning to cut Netflix).
+
+![Subscriptions with the cancel planner](docs/screenshots/05-subscriptions-cancel-planner.png)
+
+**Bills:** upcoming charges and a calendar of charges and paydays.
+
+![Bills](docs/screenshots/06-bills.png)
+
+**Cards:** each account drawn as a card, with balances, credit used, and the card network.
+
+![Cards](docs/screenshots/07-cards.png)
+
+**Accounts:** connected banks, net worth, and accounts hidden from totals (the test loans here).
+
+![Accounts](docs/screenshots/08-accounts.png)
+
+**Settings:** profile, privacy mode, budget and alerts, connected banks, security, and data export or deletion.
+
+![Settings](docs/screenshots/09-settings.png)
+
+</details>
 
 ## Architecture
 
