@@ -31,7 +31,8 @@ _Last updated: 2026-10-04_
 - [x] **Card migration:** applied (confirmed by `npm run verify` on 2026-09-29).
 - [x] **Live on real banks** (2026-10-04):
   - On Plaid's free Trial plan (applied via dashboard.plaid.com/trial-plan, auto-approved), with `PLAID_ENV=production` locally. The sandbox test banks were removed.
-  - **Bank of America** is linked: checking ••3281, savings ••4681, and credit card ••1903. It has 1,786 transactions from 2025-04-07 onward (about 18 months, all BofA provided) and reports `HISTORICAL_UPDATE_COMPLETE`.
+  - **Bank of America** is linked: checking, savings, and a credit card, with about 18 months of history (all that BofA provided). It reports `HISTORICAL_UPDATE_COMPLETE`.
+  - This repo is public: never write account numbers (even last 4s), balances, or transaction details into tracked files.
   - **1 of 10 Trial slots used.** Removing a bank doesn't free its slot.
   - BofA consents expire after 12 months; use **Fix connection** then.
 - [x] **Supabase sign-ups:** off (confirmed by `npm run verify` on 2026-09-29).
