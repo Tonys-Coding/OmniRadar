@@ -1,25 +1,27 @@
 # OmniRadar high-level architecture, drawn with sysketch (https://github.com/Tonys-Coding/sysketch).
-# Re-render locally (applies the Plaid and Capital One logos from ./logos):
+# Re-render locally (applies the OmniRadar, Plaid and Capital One logos from ./logos):
 #   npx sysketch render docs/architecture.yaml --png
 # The hosted sysketch connector can't read logo folders; drop the `logos:` line there,
-# and those two nodes fall back to generic icons.
+# and those three nodes fall back to generic icons.
+# Keep it accurate: update the subtitles when Capital One is linked or the app is deployed.
 title: 'OmniRadar: High-Level Architecture'
-steps: false
+direction: right
 logos: ./logos
 nodes:
-  you: user | You | browser or phone
-  app: nextjs | OmniRadar | Next.js 16 · pages, API, sync
-  supabase: supabase | Supabase | sign-in + Postgres (RLS)
-  plaid: plaid/cloud | Plaid | bank data API
+  you: user | You | browser on your Mac
+  app: omniradar/browser | OmniRadar | Next.js 16 · localhost:3100
+  supabase: supabase | Supabase | hosted Auth + Postgres (RLS)
+  plaid: plaid/cloud | Plaid | production keys · Trial plan
   boa: bankofamerica | Bank of America | linked
-  capitalone: capitalone/cloud | Capital One | next to link
-  vercel: vercel | Vercel | hosting + daily sync (planned)
+  capitalone: capitalone/cloud | Capital One | not linked yet
+  vercel: vercel | Vercel | not deployed yet
 groups:
-  Your Banks: [boa, capitalone]
+  Your banks: [boa, capitalone]
 edges:
   - you => app | dashboard
-  - app <> supabase | your data, encrypted tokens [teal]
-  - app <> plaid | link banks, sync transactions [green]
-  - plaid <> boa | read-only access [green]
-  - plaid <..> capitalone | next [slate]
-  - vercel ..> app | deploy + cron (planned) [slate]
+  - app <> supabase | sign-in, your data, encrypted tokens [teal]
+  - app <> plaid | link banks, sync on demand [green]
+  - you > boa | sign in on BofA's site (OAuth pop-up) [violet]
+  - plaid <> boa | read-only data [green]
+  - plaid <..> capitalone | not linked [slate]
+  - vercel ..> app | hosting + daily sync (planned) [slate]

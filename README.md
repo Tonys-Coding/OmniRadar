@@ -14,7 +14,7 @@ bills, income, and savings in one place, in the spirit of Rocket Money.
 
 ![How OmniRadar works](docs/architecture.png)
 
-The diagram is generated from [`docs/architecture.yaml`](docs/architecture.yaml) with [sysketch](https://github.com/Tonys-Coding/sysketch). Plaid, Capital One, Bank of America, Supabase, Vercel, and Next.js names and logos are trademarks of their owners.
+The diagram is generated from [`docs/architecture.yaml`](docs/architecture.yaml) with [sysketch](https://github.com/Tonys-Coding/sysketch). Plaid, Capital One, Bank of America, Supabase, and Vercel names and logos are trademarks of their owners.
 
 ## Status
 
