@@ -36,7 +36,7 @@ export function mapTransaction(t: Transaction, userId: string, accountId: string
     date: t.date,
     authorized_date: t.authorized_date ?? null,
     name: t.name,
-    merchant_name: t.merchant_name ?? null,
+    merchant_name: t.merchant_name || null, // "" -> null, like recurring streams
     merchant_entity_id: t.merchant_entity_id ?? null,
     logo_url: t.logo_url ?? null,
     website: t.website ?? null,

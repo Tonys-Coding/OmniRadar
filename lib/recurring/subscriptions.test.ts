@@ -41,6 +41,16 @@ describe("serviceKey / findDuplicates", () => {
     expect(serviceKey("Spotify")).toBe("spotify");
   });
 
+  it("falls back to the description when Plaid sends an empty merchant name", () => {
+    // Plaid's recurring streams use "" (not null) for "no merchant"; those must not all share one blank key.
+    const dupes = findDuplicates([
+      { id: "a", merchant_name: "", description: "OPENAI *CHATGPT SUBSCR" },
+      { id: "b", merchant_name: "", description: "Netflix" },
+      { id: "c", merchant_name: "", description: "Spotify" },
+    ]);
+    expect(dupes.size).toBe(0);
+  });
+
   it("groups the same service, and only groups of two or more", () => {
     const dupes = findDuplicates([
       { id: "a", merchant_name: "Spotify", description: "SPOTIFY" },

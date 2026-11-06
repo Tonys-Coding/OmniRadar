@@ -56,7 +56,7 @@ function NoteCell({ t }: { t: Transaction }) {
   const [draft, setDraft] = useState(t.notes ?? "");
   const [saved, setSaved] = useState<string | null>(t.notes);
   const [status, setStatus] = useState<"idle" | "saving" | "error">("idle");
-  const merchant = tidyName(t.merchant_name ?? t.name);
+  const merchant = tidyName(t.merchant_name || t.name);
 
   // Follow the note when it changes elsewhere (another tab, a refresh), unless mid-edit.
   const [prevNotes, setPrevNotes] = useState(t.notes);
@@ -150,7 +150,7 @@ export function TransactionLine({
   actions: RowFilterActions;
 }) {
   const incoming = t.amount < 0;
-  const name = tidyName(t.merchant_name ?? t.name);
+  const name = tidyName(t.merchant_name || t.name);
   const description = t.name && tidyName(t.name) !== name ? t.name : null;
   const channel = t.payment_channel ? CHANNEL[t.payment_channel] : undefined;
   const ChannelIcon = channel?.icon;

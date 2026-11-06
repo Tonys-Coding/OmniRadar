@@ -53,7 +53,7 @@ export function topMerchants(txns: AnalyticsTxn[], limit = 10, incomeIds: Readon
   const totals = new Map<string, MerchantTotal>();
   for (const t of txns) {
     if (classifyCashflow(t, incomeIds) !== "spending") continue;
-    const merchant = t.merchant_name ?? t.name;
+    const merchant = t.merchant_name || t.name;
     const key = merchant.toLowerCase();
     const entry = totals.get(key) ?? { merchant, logo_url: null, total: 0, count: 0, category: t.category_primary };
     entry.total += t.amount;

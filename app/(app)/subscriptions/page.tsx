@@ -27,9 +27,9 @@ type SortValue = (typeof SORTS)[number]["value"];
 /** A price change older than this is history, not news. */
 const RECENT_CHANGE_DAYS = 120;
 
-const nameOf = (s: Stream) => tidyName(s.merchant_name ?? s.description);
+const nameOf = (s: Stream) => tidyName(s.merchant_name || s.description);
 const chargeOf = (s: Stream) => s.last_amount ?? s.average_amount ?? 0;
-const chargesLink = (s: Stream) => `/transactions?q=${encodeURIComponent(s.merchant_name ?? s.description)}&range=all`;
+const chargesLink = (s: Stream) => `/transactions?q=${encodeURIComponent(s.merchant_name || s.description)}&range=all`;
 const accountOf = (s: Stream) => (s.account ? `${s.account.name}${s.account.mask ? ` ••${s.account.mask}` : ""}` : "Unknown account");
 const siteUrl = (w: string) => (w.includes("://") ? w : `https://${w}`);
 const siteName = (w: string) =>

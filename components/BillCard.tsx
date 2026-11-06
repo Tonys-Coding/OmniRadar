@@ -9,7 +9,7 @@ import { daysFromToday, dueLabel, FREQUENCY_LABEL, moneyParts, shortDate, tidyNa
  * width for a sideways-scrolling row; `fluid` fills a grid cell instead.
  */
 export function BillCard({ bill, featured, fluid }: { bill: Bill; featured?: boolean; fluid?: boolean }) {
-  const name = tidyName(bill.merchant_name ?? bill.description);
+  const name = tidyName(bill.merchant_name || bill.description);
   const days = bill.predicted_next_date ? daysFromToday(bill.predicted_next_date) : 0;
   const [whole, cents] = moneyParts(bill.expected_amount);
   // Progress through the billing cycle, for the little meter.

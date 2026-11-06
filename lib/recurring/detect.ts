@@ -47,7 +47,7 @@ const AMOUNT_TOLERANCE = 0.5;
 const LOOKBACK_DAYS = 400;
 
 export function merchantKey(t: Pick<DetectInput, "merchant_name" | "name">): string {
-  return (t.merchant_name ?? t.name)
+  return (t.merchant_name || t.name)
     .toLowerCase()
     .replace(/[^a-z& ]+/g, " ")
     .replace(/\s+/g, " ")
@@ -135,7 +135,7 @@ export function detectRecurring(transactions: DetectInput[], userId: string, asO
       source: "local",
       direction,
       kind: classifyStream(direction, primary, detailed),
-      description: last.merchant_name ?? last.name,
+      description: last.merchant_name || last.name,
       merchant_name: last.merchant_name,
       category_primary: primary,
       category_detailed: detailed,

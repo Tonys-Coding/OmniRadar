@@ -30,7 +30,8 @@ export function mapPlaidStream(
     direction,
     kind: classifyStream(direction, primary, detailed),
     description: stream.description,
-    merchant_name: stream.merchant_name ?? null,
+    // Plaid sends "" (not null) when it has no merchant; store null so names fall back to the description.
+    merchant_name: stream.merchant_name || null,
     category_primary: primary,
     category_detailed: detailed,
     frequency,

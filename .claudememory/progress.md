@@ -1,6 +1,6 @@
 # Progress & Deployment Roadmap
 
-_Last updated: 2026-10-04_
+_Last updated: 2026-11-06_
 
 ## What is Working
 - [x] Database schema with RLS on every table (migration applied in Supabase, verified by `npm run verify`).
@@ -25,7 +25,11 @@ _Last updated: 2026-10-04_
   - Leave the redirect URI blank for desktop OAuth pop-ups; the env check rejects `http://` redirect URIs in production.
   - `npm run verify` now creates a Link token with Transactions, and flags linked banks from the wrong environment or linked twice.
   - After linking with no webhook, `syncNewItem` keeps syncing every 30 seconds for up to 6 minutes until the history is complete.
-- [x] Typecheck and lint pass; 111 unit tests pass. The last full `npm run build` was on 2026-09-28 (run it again after stopping `next dev`).
+- [x] **Showcase screenshots** (2026-11-06): `docs/screenshots/` holds 9 desktop shots at 2x and 5 phone shots at 3x, shown in the README. They come from an isolated demo login (`demo@example.com`, display name "Alex") linked to Plaid Sandbox's First Platypus Bank, with its test loans hidden and a $3,000 budget.
+  - To re-shoot: run `npm run dev` with `PLAID_ENV=sandbox` and the Sandbox `PLAID_SECRET` from the git-ignored `.env.demo.copy`, sign in with `npm run dev-token demo@example.com`, and capture with headless Chrome.
+  - `npm run verify` now warns about 2 users and a sandbox bank under production keys. That's the demo account; delete it in Supabase → Authentication when it's no longer needed.
+- [x] Empty Plaid merchant names (`""`) are stored as null, so subscription and transaction names fall back to the bank description (this fixed a blank "Next:" on Subscriptions).
+- [x] Typecheck and lint pass; 112 unit tests pass. The last full `npm run build` was on 2026-09-28 (run it again after stopping `next dev`).
 
 ## What is Broken / Tech Debt
 - [x] **Card migration:** applied (confirmed by `npm run verify` on 2026-09-29).

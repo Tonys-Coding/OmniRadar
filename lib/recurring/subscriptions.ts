@@ -56,7 +56,7 @@ type Named = { id: string; merchant_name: string | null; description: string };
 export function findDuplicates(subs: Named[]): Map<string, string> {
   const groups = new Map<string, string[]>();
   for (const s of subs) {
-    const key = serviceKey(s.merchant_name ?? s.description);
+    const key = serviceKey(s.merchant_name || s.description);
     if (!key) continue;
     groups.set(key, [...(groups.get(key) ?? []), s.id]);
   }

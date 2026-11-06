@@ -30,10 +30,10 @@ export const GET = withAuth(async (_request, auth) => {
     accounts,
     recentSpending: spending
       .filter((t) => t.date >= weekAgo && t.amount > 0)
-      .map((t) => ({ id: t.plaid_transaction_id, name: t.merchant_name ?? t.name, amount: t.amount, date: t.date })),
+      .map((t) => ({ id: t.plaid_transaction_id, name: t.merchant_name || t.name, amount: t.amount, date: t.date })),
     bills: streams
       .filter((s) => s.direction === "outflow" && (s.effective_kind === "bill" || s.effective_kind === "subscription") && s.predicted_next_date)
-      .map((s) => ({ id: s.id, name: s.merchant_name ?? s.description, amount: s.last_amount ?? s.average_amount ?? 0, due: s.predicted_next_date! })),
+      .map((s) => ({ id: s.id, name: s.merchant_name || s.description, amount: s.last_amount ?? s.average_amount ?? 0, due: s.predicted_next_date! })),
     month: {
       spending: spending.filter((t) => t.date >= monthStart).reduce((sum, t) => sum + t.amount, 0),
       dayOfMonth: Number(now.slice(8, 10)),

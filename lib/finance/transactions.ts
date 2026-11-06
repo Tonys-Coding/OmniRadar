@@ -59,7 +59,7 @@ export function summarizeTransactions(rows: readonly SummaryTxn[]): TransactionS
     count_in: countIn,
     count_out: countOut,
     pending,
-    largest_out: largest ? { name: largest.merchant_name ?? largest.name, amount: round2(Number(largest.amount)), date: largest.date } : null,
+    largest_out: largest ? { name: largest.merchant_name || largest.name, amount: round2(Number(largest.amount)), date: largest.date } : null,
     first_date: first,
     last_date: last,
   };

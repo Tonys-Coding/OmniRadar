@@ -17,7 +17,7 @@ export function TransactionRow({
   compact?: boolean;
 }) {
   const incoming = t.amount < 0;
-  const name = tidyName(t.merchant_name ?? t.name);
+  const name = tidyName(t.merchant_name || t.name);
   const Tag = onClick ? "button" : "div";
   return (
     <Tag

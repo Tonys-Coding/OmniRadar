@@ -120,8 +120,8 @@ function MonthCalendarView({ streams }: { streams: Stream[] }) {
             <ul className="flex flex-col gap-2">
               {pickedEntries.map((e) => (
                 <li key={e.stream.id} className="flex items-center gap-3 text-sm">
-                  <Logo src={e.stream.logo_url} name={e.stream.merchant_name ?? e.stream.description} size={32} />
-                  <span className="flex-1 truncate">{tidyName(e.stream.merchant_name ?? e.stream.description)}</span>
+                  <Logo src={e.stream.logo_url} name={e.stream.merchant_name || e.stream.description} size={32} />
+                  <span className="flex-1 truncate">{tidyName(e.stream.merchant_name || e.stream.description)}</span>
                   {e.paid ? <Check className="size-4 text-success" aria-label="Paid" /> : null}
                   <span className={cx("font-medium tabular", e.stream.direction === "inflow" && "text-brand-ink")}>
                     {e.stream.direction === "inflow" ? "+" : ""}
@@ -199,7 +199,7 @@ export default function BillsPage() {
                 <h3 className="mb-1 text-sm text-muted">{g.label}</h3>
                 <ul className="divide-y divide-line">
                   {g.items.map((b) => {
-                    const name = tidyName(b.merchant_name ?? b.description);
+                    const name = tidyName(b.merchant_name || b.description);
                     return (
                       <li key={b.id} className="flex items-center gap-3 py-2.5">
                         <Logo src={b.logo_url} name={name} size={40} />
